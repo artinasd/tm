@@ -6,10 +6,8 @@ import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined
 import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined';
 import TaskOutlinedIcon from '@mui/icons-material/TaskOutlined';
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
-import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import MenuOutlinedIcon from '@mui/icons-material/MenuOutlined';
-import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
 import {useDispatch, useSelector} from "react-redux";
 import {useEffect, useState} from "react";
 import {loggedUserActions} from "../Redux/LoggedUserSlice.js";
@@ -64,9 +62,6 @@ function Layout() {
 
             <hr className='w-full border-t border-t-gray-700 my-6' />
 
-            <TwoElementButton title='Settings' onClick={() => {}}>
-                <SettingsOutlinedIcon style={{color: '#C5C9CF'}} />
-            </TwoElementButton>
             <TwoElementButton onClick={handleLogout} title='Logout'>
                 <LogoutOutlinedIcon style={{color: '#C5C9CF'}} />
             </TwoElementButton>
@@ -91,7 +86,7 @@ function Layout() {
             <main className='flex-1 min-w-0 min-h-screen overflow-y-auto'>
                 <div className='md:hidden sticky top-0 z-30 bg2 border-b border-gray-700 px-4 py-3 flex items-center justify-between'>
                     <button aria-label='Open navigation' onClick={() => setMobileMenuOpen(true)} className='p-2 rounded-md hover:bg-gray-700'>
-                        {mobileMenuOpen ? <CloseOutlinedIcon /> : <MenuOutlinedIcon />}
+                        <MenuOutlinedIcon />
                     </button>
                     <div className='flex items-center gap-2 font-bold'>
                         <PlaylistAddCheckRoundedIcon style={{color: '#818cf8'}} />
