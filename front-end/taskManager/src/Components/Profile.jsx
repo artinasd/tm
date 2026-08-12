@@ -8,7 +8,8 @@ import { api, ApiError } from '../services/api.js';
 import { loggedUserActions } from '../Redux/LoggedUserSlice.js';
 
 function Profile() {
-    const reduxUserInformation = useSelector(state => state.loggedUser.userInfo);
+    const loggedUser = useSelector(state => state.loggedUser);
+    const reduxUserInformation = loggedUser.userInfo;
     const [editedFields, setEditedFields] = useState({});
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState('');
@@ -20,20 +21,14 @@ function Profile() {
 
     async function handleSave() {
         if (Object.keys(editedFields).length === 0) {
-            setSuccess('There are no changes to save.');
-            setError('');
-            return;
+            setSuccess('There are no changes to save.'); setError(''); return;
         }
         setIsSaving(true); setError(''); setSuccess('');
         try {
             const updated = await api.patch('/api/accounts/edit', editedFields);
             const updatedUser = updated && typeof updated === 'object' ? updated : { ...reduxUserInformation, ...editedFields };
-            dispatch(loggedUserActions.setLoggedUser({
-                accessToken: undefined,
-                userInfo: updatedUser,
-            }));
-            setEditedFields({});
-            setSuccess('Profile updated successfully.');
+            dispatch(loggedUserActions.setLoggedUser({ ...loggedUser, userInfo: updatedUser }));
+            setEditedFields({}); setSuccess('Profile updated successfully.');
         } catch (err) {
             setError(err instanceof ApiError ? err.message : 'Unable to update your profile.');
         } finally { setIsSaving(false); }
