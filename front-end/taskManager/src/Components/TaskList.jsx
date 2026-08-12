@@ -4,8 +4,6 @@ import Table from './Costume UI Components/Table.jsx';
 import {api, ApiError} from '../services/api.js';
 import {useSelector} from 'react-redux';
 
-const STATUS_OPTIONS = ['All', 'TODO', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
-
 function getAccountCode(userInfo) {
     return userInfo?.accountCode || userInfo?.accountID || userInfo?.account?.accountCode || userInfo?.account?.accountID;
 }
@@ -32,25 +30,25 @@ function TaskList() {
     const userInfo = useSelector(state => state.loggedUser.userInfo);
     const accountCode = getAccountCode(userInfo);
     const [tasks, setTasks] = useState([]);
-    const [status, setStatus] = useState('All');
+    const [status, setStatus] = useState('');
     const [query, setQuery] = useState('');
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
     const loadTasks = useCallback(async () => {
         if (!accountCode) {
-            setTasks([]);
-            setLoading(false);
+            setError('Your account code is not available. Please sign in again.');
+            return;
+        }
+        if (!status.trim()) {
+            setError('The current backend task-list endpoint requires a task status. Enter an existing status type to load tasks.');
             return;
         }
 
         setLoading(true);
         setError(null);
         try {
-            const response = await api.get(`/api/tasks/${encodeURIComponent(accountCode)}`, {
-                headers: {'Accept': 'application/json'},
-                ...(status !== 'All' ? {} : {}),
-            });
+            const response = await api.get(`/api/tasks/${encodeURIComponent(accountCode)}?status=${encodeURIComponent(status.trim())}`, {headers: {'Accept': 'application/json'}});
             setTasks(Array.isArray(response) ? response : []);
         } catch (err) {
             setError(err instanceof ApiError ? err.message : 'Unable to load your tasks.');
@@ -61,20 +59,17 @@ function TaskList() {
     }, [accountCode, status]);
 
     useEffect(() => {
-        loadTasks();
-    }, [loadTasks]);
+        setTasks([]);
+        setError(null);
+    }, [accountCode]);
 
     const visibleTasks = useMemo(() => {
         const normalizedQuery = query.trim().toLowerCase();
-        return tasks.filter(task => {
-            const taskStatus = getStatus(task).toUpperCase();
-            const matchesStatus = status === 'All' || taskStatus === status;
-            const matchesQuery = !normalizedQuery || [task.title, task.description, task.priority, getPersonName(task.responsible), getPersonName(task.owner)]
-                .filter(Boolean)
-                .some(value => String(value).toLowerCase().includes(normalizedQuery));
-            return matchesStatus && matchesQuery;
-        });
-    }, [query, status, tasks]);
+        if (!normalizedQuery) return tasks;
+        return tasks.filter(task => [task.title, task.description, task.priority, getPersonName(task.responsible), getPersonName(task.owner)]
+            .filter(Boolean)
+            .some(value => String(value).toLowerCase().includes(normalizedQuery)));
+    }, [query, tasks]);
 
     const headers = ['TASK', 'STATUS', 'DUE DATE', 'PRIORITY', 'RESPONSIBLE'];
     const rows = visibleTasks.map(task => [
@@ -91,40 +86,28 @@ function TaskList() {
         <div className='flex flex-col h-full w-full'>
             <div className='flex flex-col gap-4 md:flex-row md:items-end md:justify-between'>
                 <div>
-                    <h2 className='text-2xl font-bold mb-1'>All Tasks</h2>
-                    <p className='text2'>Here are all your available tasks.</p>
+                    <h2 className='text-2xl font-bold mb-1'>Tasks</h2>
+                    <p className='text2'>Load tasks for your account by an existing backend status type.</p>
                 </div>
-                <button onClick={() => navigate('/home/new-task')} className='theme rounded-full px-4 py-2 hover:bg-[#4f46e5] self-start'>
-                    + Add New Task
-                </button>
+                <button onClick={() => navigate('/home/new-task')} className='theme rounded-full px-4 py-2 hover:bg-[#4f46e5] self-start'>+ Add New Task</button>
             </div>
 
             <div className='rounded-lg bg2 p-4 mt-6 flex flex-col md:flex-row gap-3'>
-                <input
-                    value={query}
-                    onChange={event => setQuery(event.target.value)}
-                    placeholder='Search your tasks...'
-                    aria-label='Search tasks'
-                    className='border border-gray-600 rounded-md px-3 py-2 bg-transparent flex-1 focus:outline-none focus:border-indigo-500'
-                />
-                <select value={status} onChange={event => setStatus(event.target.value)} aria-label='Filter tasks by status' className='border border-gray-600 rounded-md px-3 py-2 bg-transparent'>
-                    {STATUS_OPTIONS.map(option => <option key={option} value={option} className='bg-gray-900'>{option.replace('_', ' ')}</option>)}
-                </select>
-                <button onClick={loadTasks} disabled={loading} className='rounded-md px-4 py-2 bg1 disabled:opacity-50'>Refresh</button>
+                <input value={status} onChange={event => setStatus(event.target.value)} placeholder='Status type (required by API)' aria-label='Task status type' className='border border-gray-600 rounded-md px-3 py-2 bg-transparent md:w-64 focus:outline-none focus:border-indigo-500' />
+                <input value={query} onChange={event => setQuery(event.target.value)} placeholder='Search loaded tasks...' aria-label='Search loaded tasks' className='border border-gray-600 rounded-md px-3 py-2 bg-transparent flex-1 focus:outline-none focus:border-indigo-500' />
+                <button onClick={loadTasks} disabled={loading || !status.trim()} className='rounded-md px-4 py-2 bg1 disabled:opacity-50'>{loading ? 'Loading...' : 'Load Tasks'}</button>
             </div>
 
             <div className='mt-5 overflow-x-auto'>
-                {loading ? (
-                    <div className='rounded-lg bg2 p-8 text-center text2'>Loading tasks...</div>
-                ) : error ? (
+                {error ? (
                     <div className='rounded-lg bg2 p-8 text-center'>
                         <p className='text-red-400'>{error}</p>
-                        <button onClick={loadTasks} className='theme rounded-md px-4 py-2 mt-4'>Try again</button>
+                        {status.trim() && <button onClick={loadTasks} className='theme rounded-md px-4 py-2 mt-4'>Try again</button>}
                     </div>
                 ) : visibleTasks.length === 0 ? (
                     <div className='rounded-lg bg2 p-8 text-center'>
-                        <p className='font-semibold'>{tasks.length === 0 ? 'No tasks yet' : 'No matching tasks'}</p>
-                        <p className='text2 mt-1'>{tasks.length === 0 ? 'Create your first task to get started.' : 'Try another search or status filter.'}</p>
+                        <p className='font-semibold'>{loading ? 'Loading tasks...' : status ? 'No tasks returned for this status' : 'Enter a status to load tasks'}</p>
+                        <p className='text2 mt-1'>{status ? 'Try another existing status type.' : 'The backend currently does not expose an all-status task-list endpoint.'}</p>
                     </div>
                 ) : (
                     <Table title={`Tasks (${visibleTasks.length})`} headers={headers} rows={rows} />
