@@ -1,13 +1,18 @@
 import {createSlice} from "@reduxjs/toolkit";
 
+const STORAGE_KEY = 'isLoggedState';
+
 function saveData(state) {
-    localStorage.setItem('isLoggedState', JSON.stringify(state));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(Boolean(state)));
 }
 
 function getState() {
-    const readFile = localStorage.getItem('isLoggedState');
-    if (readFile) {
-        return JSON.parse(readFile)
+    try {
+        const readFile = localStorage.getItem(STORAGE_KEY);
+        return readFile ? JSON.parse(readFile) : false;
+    } catch {
+        localStorage.removeItem(STORAGE_KEY);
+        return false;
     }
 }
 
@@ -16,12 +21,16 @@ const IsLoggedSlice = createSlice({
     initialState: false,
     reducers: {
         setIsLogged: (_, action) => {
-            saveData(action.payload)
-            return action.payload;
+            saveData(action.payload);
+            return Boolean(action.payload);
+        },
+        clearIsLogged: () => {
+            localStorage.removeItem(STORAGE_KEY);
+            return false;
         }
     }
-})
+});
 
 export default IsLoggedSlice.reducer;
 export const IsLoggedUserActions = IsLoggedSlice.actions;
-export {getState}
+export {getState};

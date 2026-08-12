@@ -1,95 +1,107 @@
 import PlaylistAddCheckRoundedIcon from '@mui/icons-material/PlaylistAddCheckRounded';
-import {Outlet} from 'react-router-dom'
+import {Outlet, useLocation, useNavigate} from 'react-router-dom'
 import TwoElementButton from "./Costume UI Components/TwoElementButton.jsx";
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined';
 import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined';
 import TaskOutlinedIcon from '@mui/icons-material/TaskOutlined';
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
-import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
-import {useNavigate} from "react-router-dom";
+import MenuOutlinedIcon from '@mui/icons-material/MenuOutlined';
+import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
+import {useDispatch, useSelector} from "react-redux";
 import {useEffect, useState} from "react";
-import {useSelector} from "react-redux";
+import {loggedUserActions} from "../Redux/LoggedUserSlice.js";
+import {IsLoggedUserActions} from "../Redux/IsLoggedSlice.js";
 
 function Layout() {
-    const navigate = useNavigate()
-    const [isSelected, setIsSelected] = useState('')
-
+    const navigate = useNavigate();
+    const location = useLocation();
+    const dispatch = useDispatch();
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const reduxIsLogged = useSelector((state) => state.loggedState);
 
     useEffect(() => {
-        if (!reduxIsLogged) {
-            navigate('/log-in')
-        }
-    }, []);
+        if (!reduxIsLogged) navigate('/log-in', {replace: true});
+    }, [reduxIsLogged, navigate]);
 
-    return (
-        <div className='bg1 grid grid-cols-5 max-w-screen h-screen'>
-            <div className='bg2 col-span-1 p-5 flex flex-col items-start border-r border-r-gray-700'>
-                <div className='flex flex-row items-center space-x-2 p-4 mb-2'>
-                    <PlaylistAddCheckRoundedIcon style={{color: '#818cf8', fontSize: '32px'}} />
-                    <h2 className='text-2xl textTheme font-bold'>TaskManger</h2>
-                </div>
+    const currentSection = location.pathname.split('/')[2] || 'dashboard';
 
-                <TwoElementButton
-                    isSelected={isSelected === 'dashboard'}
-                    onClick={() => {
-                        navigate('/home/dashboard')
-                        setIsSelected('dashboard')
-                    }}
-                    title='Dashboard'><DashboardOutlinedIcon style={{color: '#C5C9CF'}} /></TwoElementButton>
+    function navigateTo(path) {
+        navigate(path);
+        setMobileMenuOpen(false);
+    }
 
-                <TwoElementButton
-                    isSelected={isSelected === 'profile'}
-                    onClick={() => {
-                        navigate('/home/profile')
-                        setIsSelected('profile')
-                    }}
-                    title={'Profile'}><AccountCircleOutlinedIcon style={{color: '#C5C9CF'}} /></TwoElementButton>
+    function handleLogout() {
+        dispatch(loggedUserActions.clearLoggedUser());
+        dispatch(IsLoggedUserActions.clearIsLogged());
+        navigate('/log-in', {replace: true});
+    }
 
-                <TwoElementButton
-                    isSelected={isSelected === 'groups'}
-                    onClick={() => {
-                        navigate('/home/groups')
-                        setIsSelected('groups')
-                    }}
-                    title={'Groups'}><PeopleAltOutlinedIcon style={{color: '#C5C9CF'}} /></TwoElementButton>
+    const navigation = [
+        {key: 'dashboard', title: 'Dashboard', icon: <DashboardOutlinedIcon />, path: '/home/dashboard'},
+        {key: 'profile', title: 'Profile', icon: <AccountCircleOutlinedIcon />, path: '/home/profile'},
+        {key: 'groups', title: 'Groups', icon: <PeopleAltOutlinedIcon />, path: '/home/groups'},
+        {key: 'tasks', title: 'Tasks', icon: <TaskOutlinedIcon />, path: '/home/tasks'},
+        {key: 'organizations', title: 'Organizations', icon: <BusinessOutlinedIcon />, path: '/home/organizations'},
+    ];
 
-                <TwoElementButton
-                    isSelected={isSelected === 'tasks'}
-                    onClick={() => {
-                        navigate('/home/tasks')
-                        setIsSelected('tasks')
-                    }}
-                    title={'Tasks'}><TaskOutlinedIcon style={{color: '#C5C9CF'}} /></TwoElementButton>
-
-                <TwoElementButton
-                    isSelected={isSelected === 'organizations'}
-                    onClick={() => {
-                        navigate('/home/organizations')
-                        setIsSelected('organizations')
-                    }}
-                    title={'Organizations'}><BusinessOutlinedIcon style={{color: '#C5C9CF'}} /></TwoElementButton>
-
-                <TwoElementButton title={'Calendar'}><CalendarTodayOutlinedIcon style={{color: '#C5C9CF'}} /></TwoElementButton>
-
-                <hr className='w-full border-t border-t-gray-700 my-6' />
-
-                <TwoElementButton title={'Settings'}><SettingsOutlinedIcon style={{color: '#C5C9CF'}} /></TwoElementButton>
-                <TwoElementButton
-                    onClick={() => {
-                        localStorage.clear()
-                        window.location.reload()
-                    }}
-                    title={'Logout'}>
-                    <LogoutOutlinedIcon style={{color: '#C5C9CF'}} />
-                </TwoElementButton>
+    const sidebar = (
+        <div className='bg2 w-full h-full p-5 flex flex-col items-start border-r border-r-gray-700'>
+            <div className='flex flex-row items-center space-x-2 p-4 mb-2 w-full'>
+                <PlaylistAddCheckRoundedIcon style={{color: '#818cf8', fontSize: '32px'}} />
+                <h2 className='text-2xl textTheme font-bold'>TaskManger</h2>
             </div>
 
-            <main className='col-span-4 py-20 px-10 w-full h-screen overflow-y-scroll'>
-                <Outlet />
+            <nav className='w-full flex flex-col gap-1' aria-label='Main navigation'>
+                {navigation.map((item) => (
+                    <TwoElementButton key={item.key} isSelected={currentSection === item.key} onClick={() => navigateTo(item.path)} title={item.title}>
+                        {item.icon}
+                    </TwoElementButton>
+                ))}
+            </nav>
+
+            <hr className='w-full border-t border-t-gray-700 my-6' />
+
+            <TwoElementButton title='Settings' onClick={() => {}}>
+                <SettingsOutlinedIcon style={{color: '#C5C9CF'}} />
+            </TwoElementButton>
+            <TwoElementButton onClick={handleLogout} title='Logout'>
+                <LogoutOutlinedIcon style={{color: '#C5C9CF'}} />
+            </TwoElementButton>
+        </div>
+    );
+
+    if (!reduxIsLogged) return null;
+
+    return (
+        <div className='bg1 flex min-h-screen max-w-screen'>
+            <aside className='hidden md:block md:w-64 lg:w-72 shrink-0 h-screen sticky top-0'>
+                {sidebar}
+            </aside>
+
+            {mobileMenuOpen && (
+                <div className='fixed inset-0 z-50 md:hidden'>
+                    <button aria-label='Close navigation' onClick={() => setMobileMenuOpen(false)} className='absolute inset-0 bg-black/50' />
+                    <aside className='relative z-10 w-72 max-w-[85vw] h-full'>{sidebar}</aside>
+                </div>
+            )}
+
+            <main className='flex-1 min-w-0 min-h-screen overflow-y-auto'>
+                <div className='md:hidden sticky top-0 z-30 bg2 border-b border-gray-700 px-4 py-3 flex items-center justify-between'>
+                    <button aria-label='Open navigation' onClick={() => setMobileMenuOpen(true)} className='p-2 rounded-md hover:bg-gray-700'>
+                        {mobileMenuOpen ? <CloseOutlinedIcon /> : <MenuOutlinedIcon />}
+                    </button>
+                    <div className='flex items-center gap-2 font-bold'>
+                        <PlaylistAddCheckRoundedIcon style={{color: '#818cf8'}} />
+                        TaskManger
+                    </div>
+                    <div className='w-10' />
+                </div>
+                <div className='py-10 px-4 sm:px-6 lg:px-10'>
+                    <Outlet />
+                </div>
             </main>
         </div>
     )
