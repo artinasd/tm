@@ -17,6 +17,7 @@ import CreateOrganization from './Components/CreateOrganization.jsx';
 import OrganizationDetails from './Components/OrganizationDetails.jsx';
 import CreateUnit from './Components/CreateUnit.jsx';
 import UnitDetails from './Components/UnitDetails.jsx';
+import EditUnit from './Components/EditUnit.jsx';
 import EmployeeManagement from './Components/EmployeeManagement.jsx';
 import UnitAddMembers from './Components/UnitAddMembers.jsx';
 
@@ -39,6 +40,7 @@ function App() {
                 {path: '/home/organizations/create', element: <CreateOrganization />},
                 {path: '/home/organizations/:orgCode', element: <OrganizationDetails />},
                 {path: '/home/organizations/:orgCode/units/create', element: <CreateUnit />},
+                {path: '/home/organizations/:orgCode/units/:unitCode/edit', element: <EditUnit />},
                 {path: '/home/organizations/:orgCode/units/:unitCode', element: <UnitDetails />},
                 {path: '/home/organizations/:orgCode/units/:unitCode/add-members', element: <UnitAddMembers />},
                 {path: '/home/organizations/:orgCode/employees/manage', element: <EmployeeManagement />},
