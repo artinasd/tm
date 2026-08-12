@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@layer base {
+    body {
+        @apply text-white;
+    }
+}
+
+@layer utilities {
+    .text2 {
+        color: #8D96A1;
+    }
+    .text3 {
+        color: #C5C9CF;
+    }
+    .bg1 {
+        background-color: #111827;
+    }
+    .bg2 {
+        background-color: #1f2937;
+    }
+    .bg3 {
+        background-color: #14202F;
+    }
+    .link {
+        color: #7689EF;
+    }
+    .textTheme {
+        color: #818cf8;
+    }
+    .theme {
+        background-color: #6366f1;
+    }
+    .themeHover {
+        background-color: #4f46e5;
+    }
+}
+
+::-webkit-scrollbar {
+    display: none;
+}
+
+button,
+[role="button"] {
+    cursor: pointer;
+}

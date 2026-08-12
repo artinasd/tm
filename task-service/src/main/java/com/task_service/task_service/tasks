@@ -1,0 +1,22 @@
+amir:
+ generate code + hash done
+ (type + timestamp + id)  
+  
+ change hasher to follow open/close
+
+
+ali:
+
+  task assigned : done
+  implementing Swagger : done
+  changing user to account : done
+  fixing APIs : done
+  link generator : done
+  create link builder: canceled
+  jwt security : done
+  fixing end points because of jwt security : done
+  TODO : implement joining to a group
+  implement chat room, chat message : done
+
+Artin:
+    connect profile comp to the backend for updating the db
