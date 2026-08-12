@@ -10,6 +10,7 @@ import GroupWorkspace from "./Components/GroupWorkspace.jsx";
 import CreateTask from "./Components/CreateTask.jsx";
 import TaskList from './Components/TaskList.jsx';
 import TaskDetails from './Components/TaskDetails.jsx';
+import EditTask from './Components/EditTask.jsx';
 import GroupList from './Components/GroupList.jsx';
 import OrganizationList from './Components/OrganizationList.jsx';
 import CreateOrganization from './Components/CreateOrganization.jsx';
@@ -32,6 +33,7 @@ function App() {
                 {path: '/home/groups/workspace', element: <GroupWorkspace />},
                 {path: '/home/new-task', element: <CreateTask />},
                 {path: '/home/tasks', element: <TaskList />},
+                {path: '/home/tasks/:taskCode/edit', element: <EditTask />},
                 {path: '/home/tasks/:taskCode', element: <TaskDetails />},
                 {path: '/home/organizations', element: <OrganizationList />},
                 {path: '/home/organizations/create', element: <CreateOrganization />},
