@@ -20,6 +20,7 @@ import UnitDetails from './Components/UnitDetails.jsx';
 import EditUnit from './Components/EditUnit.jsx';
 import EmployeeManagement from './Components/EmployeeManagement.jsx';
 import EmployeeDetails from './Components/EmployeeDetails.jsx';
+import AccountDetails from './Components/AccountDetails.jsx';
 import UnitAddMembers from './Components/UnitAddMembers.jsx';
 
 function App() {
@@ -31,6 +32,7 @@ function App() {
             children: [
                 {path: '/home/dashboard', element: <Dashboard />},
                 {path: '/home/profile', element: <Profile />},
+                {path: '/home/accounts/:accountCode', element: <AccountDetails />},
                 {path: '/home/groups', element: <GroupList />},
                 {path: '/home/groups/workspace', element: <GroupWorkspace />},
                 {path: '/home/new-task', element: <CreateTask />},
