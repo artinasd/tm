@@ -107,19 +107,14 @@ function EmployeeManagement() {
         setError('');
         setSuccess('');
         try {
-            await api.post('/api/employees/add', {
-                orgCode,
-                account: { accountCode: selectedAccountCode },
-            });
+            await api.post('/api/employees/add', { orgCode, account: { accountCode: selectedAccountCode } });
             setSuccess('Employee added to the organization successfully.');
             setIsAddModalOpen(false);
             setSelectedAccountCode(null);
             await loadMembers();
         } catch (err) {
             setError(err instanceof ApiError ? err.message : 'Unable to add this user to the organization.');
-        } finally {
-            setAddingEmployee(false);
-        }
+        } finally { setAddingEmployee(false); }
     };
 
     const runMemberAction = async (accountCode, action, successMessage) => {
@@ -137,11 +132,12 @@ function EmployeeManagement() {
         const account = getAccount(employee); const accountCode = getAccountCode(employee); const role = getRole(employee);
         const active = employee?.isActive ?? !employee?.isDeleted; const joinDate = getJoinDate(employee);
         return [
-            <div key={`${accountCode}-person`} className="flex items-center gap-3 min-w-[180px]"><div className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center shrink-0"><PersonIcon sx={{ fontSize: 18, color: 'white' }} /></div><div className="min-w-0"><div className="font-medium truncate">{getAccountName(employee)}</div><div className="text2 text-xs truncate">{account.email || accountCode || '—'}</div></div></div>,
+            <button type="button" key={`${accountCode}-person`} onClick={() => accountCode && navigate(isUnitView ? `/home/organizations/${orgCode}/units/${unitCode}/employees/${accountCode}` : `/home/organizations/${orgCode}/employees/${accountCode}`)} className="flex items-center gap-3 min-w-[180px] text-left hover:opacity-80 transition"><div className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center shrink-0"><PersonIcon sx={{ fontSize: 18, color: 'white' }} /></div><div className="min-w-0"><div className="font-medium truncate">{getAccountName(employee)}</div><div className="text2 text-xs truncate">{account.email || accountCode || '—'}</div></div></button>,
             <div className="flex items-center gap-2" key={`${accountCode}-role`}>{role.toLowerCase() === 'admin' && <AdminPanelSettingsIcon sx={{ fontSize: 17 }} />}<span>{role}</span></div>,
             <span className="text2" key={`${accountCode}-date`}>{joinDate ? new Date(joinDate).toLocaleDateString() : '—'}</span>,
             <span className={active ? 'text-green-400' : 'text-red-400'} key={`${accountCode}-status`}>{active ? 'Active' : 'Inactive'}</span>,
             <div className="flex flex-wrap gap-2" key={`${accountCode}-actions`}>
+                <button type="button" onClick={() => accountCode && navigate(isUnitView ? `/home/organizations/${orgCode}/units/${unitCode}/employees/${accountCode}` : `/home/organizations/${orgCode}/employees/${accountCode}`)} className="px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-xs">View</button>
                 {isUnitView && role.toLowerCase() !== 'admin' && <button type="button" disabled={Boolean(actionCode)} onClick={() => runMemberAction(accountCode, 'promote', 'Member promoted successfully.')} className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-xs">{actionCode === `promote:${accountCode}` ? 'Promoting…' : 'Promote'}</button>}
                 {isUnitView && <button type="button" disabled={Boolean(actionCode)} onClick={() => { if (window.confirm(`Remove ${getAccountName(employee)} from this unit?`)) runMemberAction(accountCode, 'leave', 'Member removed from the unit.'); }} className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-50 text-xs">{actionCode === `leave:${accountCode}` ? 'Removing…' : 'Remove'}</button>}
             </div>,
