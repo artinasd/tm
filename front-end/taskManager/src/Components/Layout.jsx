@@ -3,7 +3,6 @@ import {Outlet, useLocation, useNavigate} from 'react-router-dom'
 import TwoElementButton from "./Costume UI Components/TwoElementButton.jsx";
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined';
-import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined';
 import TaskOutlinedIcon from '@mui/icons-material/TaskOutlined';
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
@@ -40,7 +39,6 @@ function Layout() {
     const navigation = [
         {key: 'dashboard', title: 'Dashboard', icon: <DashboardOutlinedIcon />, path: '/home/dashboard'},
         {key: 'profile', title: 'Profile', icon: <AccountCircleOutlinedIcon />, path: '/home/profile'},
-        {key: 'groups', title: 'Groups', icon: <PeopleAltOutlinedIcon />, path: '/home/groups'},
         {key: 'tasks', title: 'Tasks', icon: <TaskOutlinedIcon />, path: '/home/tasks'},
         {key: 'organizations', title: 'Organizations', icon: <BusinessOutlinedIcon />, path: '/home/organizations'},
     ];
@@ -49,7 +47,7 @@ function Layout() {
         <div className='bg2 w-full h-full p-5 flex flex-col items-start border-r border-r-gray-700'>
             <div className='flex flex-row items-center space-x-2 p-4 mb-2 w-full'>
                 <PlaylistAddCheckRoundedIcon style={{color: '#818cf8', fontSize: '32px'}} />
-                <h2 className='text-2xl textTheme font-bold'>TaskManger</h2>
+                <h2 className='text-2xl textTheme font-bold'>TaskManager</h2>
             </div>
 
             <nav className='w-full flex flex-col gap-1' aria-label='Main navigation'>
@@ -90,7 +88,7 @@ function Layout() {
                     </button>
                     <div className='flex items-center gap-2 font-bold'>
                         <PlaylistAddCheckRoundedIcon style={{color: '#818cf8'}} />
-                        TaskManger
+                        TaskManager
                     </div>
                     <div className='w-10' />
                 </div>
