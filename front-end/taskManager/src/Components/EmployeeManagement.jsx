@@ -26,6 +26,8 @@ function EmployeeManagement() {
     const [accounts, setAccounts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [accountsLoading, setAccountsLoading] = useState(false);
+    const [serverSearchLoading, setServerSearchLoading] = useState(false);
+    const [serverSearchResults, setServerSearchResults] = useState(null);
     const [actionCode, setActionCode] = useState(null);
     const [search, setSearch] = useState('');
     const [accountSearch, setAccountSearch] = useState('');
@@ -54,6 +56,7 @@ function EmployeeManagement() {
                 setEmployees(Array.isArray(members) ? members : []);
                 setOrganization(orgDetails);
             }
+            setServerSearchResults(null);
         } catch (err) {
             setError(err instanceof ApiError ? err.message : 'Unable to load members.');
         } finally { setLoading(false); }
@@ -61,15 +64,49 @@ function EmployeeManagement() {
 
     useEffect(() => { loadMembers(); }, [loadMembers]);
 
+    useEffect(() => {
+        const query = search.trim();
+        setServerSearchResults(null);
+        if (isUnitView || query.split(/\s+/).filter(Boolean).length < 2) {
+            setServerSearchLoading(false);
+            return undefined;
+        }
+
+        const parts = query.split(/\s+/).filter(Boolean);
+        const firstName = parts.shift();
+        const lastName = parts.join(' ');
+        const controller = new AbortController();
+        const timer = window.setTimeout(async () => {
+            setServerSearchLoading(true);
+            try {
+                const result = await api.get(`/api/employees/search?firstName=${encodeURIComponent(firstName)}&lastName=${encodeURIComponent(lastName)}`);
+                if (!controller.signal.aborted) setServerSearchResults(Array.isArray(result) ? result : []);
+            } catch (err) {
+                if (!controller.signal.aborted) {
+                    setServerSearchResults(null);
+                    setError(err instanceof ApiError ? err.message : 'Unable to search employees.');
+                }
+            } finally {
+                if (!controller.signal.aborted) setServerSearchLoading(false);
+            }
+        }, 350);
+
+        return () => {
+            controller.abort();
+            window.clearTimeout(timer);
+        };
+    }, [search, isUnitView]);
+
     const filteredEmployees = useMemo(() => {
+        const source = serverSearchResults ?? employees;
         const query = search.trim().toLowerCase();
-        if (!query) return employees;
-        return employees.filter((employee) => {
+        if (!query || serverSearchResults) return source;
+        return source.filter((employee) => {
             const account = getAccount(employee);
             return [account.accountName, account.email, account.accountCode, getRole(employee)]
                 .filter(Boolean).some((value) => String(value).toLowerCase().includes(query));
         });
-    }, [employees, search]);
+    }, [employees, search, serverSearchResults]);
 
     const availableAccounts = useMemo(() => {
         const existingCodes = new Set(employees.map(getAccountCode).filter(Boolean));
@@ -152,12 +189,13 @@ function EmployeeManagement() {
             {success && <div className="rounded-lg border border-green-500/30 bg-green-500/10 text-green-300 px-4 py-3" role="status">{success}</div>}
             <section className="bg2 rounded-xl p-4 sm:p-6">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
-                    <div><div className="flex items-center gap-2"><PeopleAltOutlinedIcon /><h3 className="text-lg font-semibold">Members</h3></div><p className="text2 text-sm mt-1">{employees.length} member{employees.length === 1 ? '' : 's'}</p></div>
+                    <div><div className="flex items-center gap-2"><PeopleAltOutlinedIcon /><h3 className="text-lg font-semibold">Members</h3></div><p className="text2 text-sm mt-1">{serverSearchResults ? `${serverSearchResults.length} matching result${serverSearchResults.length === 1 ? '' : 's'}` : `${employees.length} member${employees.length === 1 ? '' : 's'}`}</p></div>
                     <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                         {!isUnitView && <button type="button" onClick={openAddModal} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white"><PersonAddIcon sx={{ fontSize: 19 }} />Add Employee</button>}
-                        <div className="relative w-full md:w-80"><SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" sx={{ fontSize: 19 }} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search members…" className="w-full rounded-lg bg1 border border-gray-700 py-2.5 pl-10 pr-3 outline-none focus:border-blue-500" /></div>
+                        <div className="relative w-full md:w-80"><SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" sx={{ fontSize: 19 }} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={isUnitView ? 'Search members…' : 'Search by name, email, or code…'} className="w-full rounded-lg bg1 border border-gray-700 py-2.5 pl-10 pr-3 outline-none focus:border-blue-500" aria-label="Search members" /></div>
                     </div>
                 </div>
+                {serverSearchLoading && <div className="mb-4 text-sm text2">Searching employees…</div>}
                 {loading ? <div className="py-16 text-center text2">Loading members…</div> : filteredEmployees.length === 0 ? <div className="py-16 text-center"><PeopleAltOutlinedIcon sx={{ fontSize: 48, color: '#6B7280' }} /><h4 className="mt-3 font-semibold">{search ? 'No matching members' : 'No members yet'}</h4><p className="text2 text-sm mt-1">{search ? 'Try a different name, email, or account code.' : 'There are currently no members to display.'}</p></div> : <div className="overflow-x-auto"><Table headers={["EMPLOYEE", "ROLE", "JOIN DATE", "STATUS", "ACTIONS"]} rows={rows} /></div>}
             </section>
             {isAddModalOpen && !isUnitView && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="add-employee-title">
