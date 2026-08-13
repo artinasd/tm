@@ -19,6 +19,7 @@ import CreateUnit from './Components/CreateUnit.jsx';
 import UnitDetails from './Components/UnitDetails.jsx';
 import EditUnit from './Components/EditUnit.jsx';
 import EmployeeManagement from './Components/EmployeeManagement.jsx';
+import EmployeeDetails from './Components/EmployeeDetails.jsx';
 import UnitAddMembers from './Components/UnitAddMembers.jsx';
 
 function App() {
@@ -43,8 +44,10 @@ function App() {
                 {path: '/home/organizations/:orgCode/units/:unitCode/edit', element: <EditUnit />},
                 {path: '/home/organizations/:orgCode/units/:unitCode', element: <UnitDetails />},
                 {path: '/home/organizations/:orgCode/units/:unitCode/add-members', element: <UnitAddMembers />},
-                {path: '/home/organizations/:orgCode/employees/manage', element: <EmployeeManagement />},
+                {path: '/home/organizations/:orgCode/units/:unitCode/employees/:accountCode', element: <EmployeeDetails />},
                 {path: '/home/organizations/:orgCode/units/:unitCode/employees', element: <EmployeeManagement />},
+                {path: '/home/organizations/:orgCode/employees/:accountCode', element: <EmployeeDetails />},
+                {path: '/home/organizations/:orgCode/employees/manage', element: <EmployeeManagement />},
             ]
         },
         {path: '/sign-up', element: <SignUpForm />},
