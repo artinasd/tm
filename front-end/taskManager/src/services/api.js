@@ -1,4 +1,5 @@
 const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8081').replace(/\/$/, '');
+const STORAGE_KEY = 'taskManagerLoggedUser';
 
 export class ApiError extends Error {
     constructor(message, status, data = null) {
@@ -11,11 +12,16 @@ export class ApiError extends Error {
 
 function getStoredUser() {
     try {
-        const raw = localStorage.getItem('taskManagerLoggedUser');
+        const raw = localStorage.getItem(STORAGE_KEY);
         return raw ? JSON.parse(raw) : null;
     } catch {
         return null;
     }
+}
+
+function saveStoredUser(user) {
+    if (user) localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+    else localStorage.removeItem(STORAGE_KEY);
 }
 
 async function parseResponse(response) {
@@ -28,7 +34,28 @@ async function parseResponse(response) {
     return text || null;
 }
 
-export async function apiFetch(path, options = {}) {
+async function refreshAccessToken(user) {
+    if (!user?.refreshToken) return null;
+
+    const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(user.refreshToken),
+    });
+
+    const data = await parseResponse(response);
+    if (!response.ok || !data?.accessToken) return null;
+
+    const updatedUser = {
+        ...user,
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken || user.refreshToken,
+    };
+    saveStoredUser(updatedUser);
+    return updatedUser;
+}
+
+export async function apiFetch(path, options = {}, retryOnUnauthorized = true) {
     const user = getStoredUser();
     const headers = new Headers(options.headers || {});
 
@@ -44,6 +71,14 @@ export async function apiFetch(path, options = {}) {
         ...options,
         headers,
     });
+
+    if (response.status === 401 && retryOnUnauthorized && user?.refreshToken && path !== '/api/auth/refresh') {
+        const refreshedUser = await refreshAccessToken(user);
+        if (refreshedUser) {
+            return apiFetch(path, options, false);
+        }
+    }
+
     const data = await parseResponse(response);
 
     if (!response.ok) {
@@ -70,11 +105,7 @@ export const api = {
         method: 'PATCH',
         body: body instanceof FormData ? body : JSON.stringify(body),
     }),
-    put: (path, body, options = {}) => apiFetch(path, {
-        ...options,
-        method: 'PUT',
-        body: body instanceof FormData ? body : JSON.stringify(body),
-    }),
+    put: (path, body, options = {}) => apiFetch(path, { ...options, method: 'PUT' }),
     delete: (path, options = {}) => apiFetch(path, { ...options, method: 'DELETE' }),
 };
 
