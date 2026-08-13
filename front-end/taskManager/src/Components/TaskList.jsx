@@ -25,6 +25,20 @@ function getPersonName(employment) {
     return [account.firstName, account.lastName].filter(Boolean).join(' ') || account.accountName || account.accountID || '—';
 }
 
+function getPriorityRank(priority) {
+    const value = String(priority || '').toLowerCase();
+    if (value === 'critical') return 4;
+    if (value === 'high') return 3;
+    if (value === 'medium') return 2;
+    if (value === 'low') return 1;
+    return 0;
+}
+
+function getDeadlineTimestamp(task) {
+    const timestamp = new Date(task?.deadline || '').getTime();
+    return Number.isNaN(timestamp) ? Number.POSITIVE_INFINITY : timestamp;
+}
+
 function TaskList() {
     const navigate = useNavigate();
     const userInfo = useSelector(state => state.loggedUser.userInfo);
@@ -32,6 +46,7 @@ function TaskList() {
     const [tasks, setTasks] = useState([]);
     const [status, setStatus] = useState('');
     const [query, setQuery] = useState('');
+    const [sortBy, setSortBy] = useState('deadline');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
@@ -65,11 +80,32 @@ function TaskList() {
 
     const visibleTasks = useMemo(() => {
         const normalizedQuery = query.trim().toLowerCase();
-        if (!normalizedQuery) return tasks;
-        return tasks.filter(task => [task.title, task.description, task.priority, getPersonName(task.responsible), getPersonName(task.owner)]
-            .filter(Boolean)
-            .some(value => String(value).toLowerCase().includes(normalizedQuery)));
-    }, [query, tasks]);
+        const filtered = normalizedQuery
+            ? tasks.filter(task => [
+                task.taskCode,
+                task.title,
+                task.description,
+                task.priority,
+                getStatus(task),
+                getPersonName(task.responsible),
+                getPersonName(task.owner),
+            ]
+                .filter(Boolean)
+                .some(value => String(value).toLowerCase().includes(normalizedQuery)))
+            : [...tasks];
+
+        return filtered.sort((first, second) => {
+            if (sortBy === 'title') return String(first.title || '').localeCompare(String(second.title || ''));
+            if (sortBy === 'priority') return getPriorityRank(second.priority) - getPriorityRank(first.priority);
+            if (sortBy === 'deadline') return getDeadlineTimestamp(first) - getDeadlineTimestamp(second);
+            return 0;
+        });
+    }, [query, sortBy, tasks]);
+
+    const clearFilters = () => {
+        setQuery('');
+        setSortBy('deadline');
+    };
 
     const headers = ['TASK', 'STATUS', 'DUE DATE', 'PRIORITY', 'RESPONSIBLE'];
     const rows = visibleTasks.map(task => [
@@ -81,6 +117,8 @@ function TaskList() {
         task.priority || '—',
         getPersonName(task.responsible),
     ]);
+
+    const hasLocalFilters = query.trim() || sortBy !== 'deadline';
 
     return (
         <div className='flex flex-col h-full w-full'>
@@ -95,6 +133,14 @@ function TaskList() {
             <div className='rounded-lg bg2 p-4 mt-6 flex flex-col md:flex-row gap-3'>
                 <input value={status} onChange={event => setStatus(event.target.value)} placeholder='Status type (required by API)' aria-label='Task status type' className='border border-gray-600 rounded-md px-3 py-2 bg-transparent md:w-64 focus:outline-none focus:border-indigo-500' />
                 <input value={query} onChange={event => setQuery(event.target.value)} placeholder='Search loaded tasks...' aria-label='Search loaded tasks' className='border border-gray-600 rounded-md px-3 py-2 bg-transparent flex-1 focus:outline-none focus:border-indigo-500' />
+                <select value={sortBy} onChange={event => setSortBy(event.target.value)} aria-label='Sort tasks' className='border border-gray-600 rounded-md px-3 py-2 bg2 md:w-44 focus:outline-none focus:border-indigo-500'>
+                    <option value='deadline'>Sort: Due date</option>
+                    <option value='title'>Sort: Title</option>
+                    <option value='priority'>Sort: Priority</option>
+                </select>
+                {hasLocalFilters && (
+                    <button onClick={clearFilters} className='rounded-md px-4 py-2 border border-gray-600 hover:bg-gray-800'>Clear</button>
+                )}
                 <button onClick={loadTasks} disabled={loading || !status.trim()} className='rounded-md px-4 py-2 bg1 disabled:opacity-50'>{loading ? 'Loading...' : 'Load Tasks'}</button>
             </div>
 
@@ -110,7 +156,7 @@ function TaskList() {
                         <p className='text2 mt-1'>{status ? 'Try another existing status type.' : 'The backend currently does not expose an all-status task-list endpoint.'}</p>
                     </div>
                 ) : (
-                    <Table title={`Tasks (${visibleTasks.length})`} headers={headers} rows={rows} />
+                    <Table title={`Tasks (${visibleTasks.length}${query.trim() ? ` of ${tasks.length}` : ''})`} headers={headers} rows={rows} />
                 )}
             </div>
         </div>
