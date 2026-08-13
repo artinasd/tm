@@ -6,12 +6,10 @@ import LogInForm from "./Components/LogInForm.jsx";
 import Layout from "./Components/Layout.jsx";
 import Dashboard from "./Components/Dashboard.jsx";
 import Profile from "./Components/Profile.jsx";
-import GroupWorkspace from "./Components/GroupWorkspace.jsx";
 import CreateTask from "./Components/CreateTask.jsx";
 import TaskList from './Components/TaskList.jsx';
 import TaskDetails from './Components/TaskDetails.jsx';
 import EditTask from './Components/EditTask.jsx';
-import GroupList from './Components/GroupList.jsx';
 import OrganizationList from './Components/OrganizationList.jsx';
 import CreateOrganization from './Components/CreateOrganization.jsx';
 import OrganizationDetails from './Components/OrganizationDetails.jsx';
@@ -33,8 +31,6 @@ function App() {
                 {path: '/home/dashboard', element: <Dashboard />},
                 {path: '/home/profile', element: <Profile />},
                 {path: '/home/accounts/:accountCode', element: <AccountDetails />},
-                {path: '/home/groups', element: <GroupList />},
-                {path: '/home/groups/workspace', element: <GroupWorkspace />},
                 {path: '/home/new-task', element: <CreateTask />},
                 {path: '/home/tasks', element: <TaskList />},
                 {path: '/home/tasks/:taskCode/edit', element: <EditTask />},
