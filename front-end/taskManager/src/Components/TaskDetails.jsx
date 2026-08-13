@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useState} from 'react';
+import {useCallback, useEffect, useMemo, useState} from 'react';
 import {useNavigate, useParams} from 'react-router-dom';
 import {api, ApiError} from '../services/api.js';
 
@@ -11,6 +11,10 @@ function formatDate(value) {
 
 function statusName(task) {
     return task?.taskStatus?.taskStatusType?.type || task?.taskStatus?.type || 'Unknown';
+}
+
+function historyStatusName(entry) {
+    return entry?.taskStatusType?.type || entry?.taskStatus?.type || 'Unknown';
 }
 
 function personName(employment) {
@@ -39,6 +43,19 @@ function TaskDetails() {
     }, [taskCode]);
 
     useEffect(() => { loadTask(); }, [loadTask]);
+
+    const statusHistory = useMemo(() => {
+        if (!Array.isArray(task?.taskStatusHistory)) return [];
+        return task.taskStatusHistory
+            .filter(Boolean)
+            .map((entry, index) => ({entry, index, time: entry?.time ? new Date(entry.time).getTime() : Number.NaN}))
+            .sort((a, b) => {
+                if (Number.isNaN(a.time) && Number.isNaN(b.time)) return a.index - b.index;
+                if (Number.isNaN(a.time)) return 1;
+                if (Number.isNaN(b.time)) return -1;
+                return a.time - b.time;
+            });
+    }, [task]);
 
     async function deleteTask() {
         if (!window.confirm('Delete this task? This action cannot be undone.')) return;
@@ -105,6 +122,25 @@ function TaskDetails() {
                     <Info label='Pinned' value={formatDate(task.pinDate)} />
                     <Info label='Task weight' value={task.taskWeight ?? '—'} />
                 </div>
+            </section>
+
+            <section className='rounded-lg bg2 p-5'>
+                <h3 className='font-semibold text-lg mb-4'>Status history</h3>
+                {statusHistory.length === 0 ? (
+                    <p className='text2'>No status history available.</p>
+                ) : (
+                    <ol className='relative ml-2 border-l border-white/10 pl-6 space-y-5'>
+                        {statusHistory.map(({entry, index}) => (
+                            <li key={`${entry?.taskCode || taskCode}-${entry?.time || 'unknown'}-${index}`} className='relative'>
+                                <span aria-hidden='true' className='absolute -left-[31px] top-1.5 h-2.5 w-2.5 rounded-full bg-current ring-4 ring-bg2' />
+                                <div className='flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4'>
+                                    <span className='font-medium break-words'>{historyStatusName(entry)}</span>
+                                    <time className='text2 text-sm shrink-0' dateTime={entry?.time || undefined}>{formatDate(entry?.time)}</time>
+                                </div>
+                            </li>
+                        ))}
+                    </ol>
+                )}
             </section>
         </div>
     );
