@@ -1,7 +1,6 @@
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
 import CameraAltOutlinedIcon from '@mui/icons-material/CameraAltOutlined';
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined';
-import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
 import Input from './Costume UI Components/Input.jsx';
 import { useSelector, useDispatch } from 'react-redux';
 import TextArea from './Costume UI Components/TextArea.jsx';
@@ -69,8 +68,8 @@ function Profile() {
                     <div className="flex items-start gap-4">
                         <div className="w-12 h-12 rounded-xl bg-indigo-500/15 text-indigo-300 flex items-center justify-center shrink-0"><BadgeOutlinedIcon /></div>
                         <div>
-                            <p className="text-xs uppercase tracking-wider text2">Current active role</p>
-                            {activeRole ? <><h3 className="text-xl font-semibold mt-1">{activeRole.roleName}</h3><p className="text2 mt-1 flex items-center gap-1"><BusinessOutlinedIcon style={{ fontSize: '17px' }} /> {activeRole.organizationName}</p></> : <p className="text2 mt-2">No active role selected.</p>}
+                            <p className="text-xs uppercase tracking-wider text2">Current account role</p>
+                            {activeRole ? <><h3 className="text-xl font-semibold mt-1">{activeRole.roleName}</h3><p className="text2 mt-1">Account-wide role</p></> : <p className="text2 mt-2">No active role selected.</p>}
                         </div>
                     </div>
                     <button type="button" onClick={changeRole} className="px-4 py-2 rounded-lg theme hover:themeHover transition">Change Role</button>
