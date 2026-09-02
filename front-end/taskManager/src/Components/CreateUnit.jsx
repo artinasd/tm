@@ -5,6 +5,7 @@ import Input from './Costume UI Components/Input.jsx';
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import BusinessIcon from '@mui/icons-material/Business';
+import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined';
 import { api } from '../services/api.js';
 
 function CreateUnit() {
@@ -14,33 +15,34 @@ function CreateUnit() {
     const [unitName, setUnitName] = useState('');
     const [bossTitle, setBossTitle] = useState('');
     const [bossCode, setBossCode] = useState('');
+    const [parentUnitCode, setParentUnitCode] = useState('');
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [organization, setOrganization] = useState(null);
     const [availableEmployees, setAvailableEmployees] = useState([]);
+    const [parentUnits, setParentUnits] = useState([]);
 
     useEffect(() => {
         let cancelled = false;
         async function loadData() {
-            if (!orgCode || !loggedUser?.accessToken) {
-                setLoading(false);
-                return;
-            }
+            if (!orgCode || !loggedUser?.accessToken) { setLoading(false); return; }
             setLoading(true);
             setError('');
             try {
-                const [org, employees] = await Promise.all([
+                const [org, employees, units] = await Promise.all([
                     api.get(`/api/orgs/${encodeURIComponent(orgCode)}`),
                     api.get(`/api/orgs/${encodeURIComponent(orgCode)}/employees`),
+                    api.get(`/api/orgs/${encodeURIComponent(orgCode)}/units`),
                 ]);
                 if (cancelled) return;
                 setOrganization(org);
-                const normalized = (Array.isArray(employees) ? employees : []).map(item => {
+                const normalizedEmployees = (Array.isArray(employees) ? employees : []).map(item => {
                     const account = item.employee?.account || item.account || item;
                     return { accountCode: account?.accountCode, accountName: account?.accountName };
                 }).filter(item => item.accountCode);
-                setAvailableEmployees(normalized);
+                setAvailableEmployees(normalizedEmployees);
+                setParentUnits((Array.isArray(units) ? units : []).filter(unit => unit.unitCode));
             } catch (err) {
                 if (!cancelled) setError(err.message || 'Failed to load organization data.');
             } finally {
@@ -56,6 +58,7 @@ function CreateUnit() {
         setError('');
         const trimmedName = unitName.trim();
         if (!trimmedName) return setError('Unit name is required.');
+        if (!parentUnitCode) return setError('Please select the parent unit.');
         if (!bossCode) return setError('Unit boss is required. Please select an employee.');
 
         const unitPath = trimmedName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
@@ -64,6 +67,7 @@ function CreateUnit() {
             await api.post('/api/units/add', {
                 unitName: trimmedName,
                 unitPath,
+                parentUnitCode,
                 bossTitle: bossTitle.trim() || null,
                 organization: { orgCode },
                 boss: { account: { accountCode: bossCode } },
@@ -84,23 +88,20 @@ function CreateUnit() {
                 <button onClick={() => navigate(`/home/organizations/${orgCode}`)} className="flex items-center justify-center w-10 h-10 bg2 hover:bg-gray-600 rounded-lg transition" aria-label="Back"><ArrowBackIcon style={{ fontSize: '20px' }} /></button>
                 <div><h2 className="text-2xl font-bold mb-1">Create New Unit</h2><p className="text2">Add a new organizational unit to {organization?.title || 'this organization'}.</p></div>
             </div>
-
-            {error && <div className="bg-red-900/40 border border-red-700 text-red-200 p-4 rounded-lg mb-4">{error}</div>}
+            {error && <div className="bg-red-900/40 border border-red-700 text-red-200 p-4 rounded-lg mb-4" role="alert">{error}</div>}
 
             <form onSubmit={createUnit} className="rounded-lg bg2 p-6 shadow-lg border border-gray-700/50">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center"><GroupsOutlinedIcon style={{ fontSize: '24px', color: 'white' }} /></div>
-                    <div><h3 className="text-lg font-semibold text-white">Unit Information</h3><p className="text2 text-sm">Define the basic structure and leadership of this unit.</p></div>
-                </div>
-
+                <div className="flex items-center gap-3 mb-6"><div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center"><GroupsOutlinedIcon style={{ fontSize: '24px', color: 'white' }} /></div><div><h3 className="text-lg font-semibold text-white">Unit Information</h3><p className="text2 text-sm">Define the basic structure, hierarchy and leadership of this unit.</p></div></div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label className="text3 font-medium mb-1 text-sm block">Unit Name *</label>
-                        <Input type="text" value={unitName} onChange={e => setUnitName(e.target.value)} placeholder="Engineering, Marketing..." />
-                    </div>
-                    <div>
-                        <label className="text3 font-medium mb-1 text-sm block">Boss Title</label>
-                        <Input type="text" value={bossTitle} onChange={e => setBossTitle(e.target.value)} placeholder="Team Lead, Manager..." />
+                    <div><label className="text3 font-medium mb-1 text-sm block">Unit Name *</label><Input type="text" value={unitName} onChange={e => setUnitName(e.target.value)} placeholder="Engineering, Marketing..." /></div>
+                    <div><label className="text3 font-medium mb-1 text-sm block">Boss Title</label><Input type="text" value={bossTitle} onChange={e => setBossTitle(e.target.value)} placeholder="Team Lead, Manager..." /></div>
+                    <div className="md:col-span-2">
+                        <label className="text3 font-medium mb-1 text-sm block">Parent Unit *</label>
+                        <select value={parentUnitCode} onChange={e => setParentUnitCode(e.target.value)} disabled={!parentUnits.length} className="border border-gray-600 rounded-lg p-2.5 w-full bg-gray-800 text-white disabled:opacity-60">
+                            <option value="">{parentUnits.length ? 'Select the parent unit...' : 'No parent units available'}</option>
+                            {parentUnits.map(unit => <option key={unit.unitCode} value={unit.unitCode}>{unit.unitName || unit.name || unit.unitCode}</option>)}
+                        </select>
+                        <p className="text2 text-xs mt-1 flex items-center gap-1"><AccountTreeOutlinedIcon style={{ fontSize: '15px' }} /> Every new unit must belong to an existing parent unit.</p>
                     </div>
                     <div>
                         <label className="text3 font-medium mb-1 text-sm block">Unit Boss *</label>
@@ -119,7 +120,7 @@ function CreateUnit() {
 
                 <div className="flex flex-col sm:flex-row justify-end gap-3 mt-8 border-t border-gray-700 pt-6">
                     <button type="button" onClick={() => navigate(`/home/organizations/${orgCode}`)} disabled={submitting} className="rounded-lg px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white transition disabled:opacity-50">Cancel</button>
-                    <button type="submit" disabled={submitting || !availableEmployees.length} className="rounded-lg px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white transition disabled:opacity-50 disabled:cursor-not-allowed">{submitting ? 'Creating...' : 'Create Unit'}</button>
+                    <button type="submit" disabled={submitting || !availableEmployees.length || !parentUnits.length} className="rounded-lg px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white transition disabled:opacity-50 disabled:cursor-not-allowed">{submitting ? 'Creating...' : 'Create Unit'}</button>
                 </div>
             </form>
         </div>
