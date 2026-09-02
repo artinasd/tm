@@ -6,7 +6,6 @@ import com.task_service.task_service.dto.TaskDTO;
 import com.task_service.task_service.dto.TaskStatusDTO;
 import com.task_service.task_service.entity.Task;
 import com.task_service.task_service.entity.TaskStatus;
-import com.task_service.task_service.entity.TaskStatusType;
 import com.task_service.task_service.exception.EntityNotFound;
 import com.task_service.task_service.mapper.*;
 import com.task_service.task_service.repository.*;
@@ -25,6 +24,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -39,9 +39,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class TaskServiceImpl implements TaskService {
 
-    private static final String CREATED_STATUS = "created";
-    private static final String ONGOING_STATUS = "ongoing";
-
     private final TaskRepository repository;
     private final TaskMapper mapper;
     private final AuthorizationManager authorizationManager;
@@ -53,6 +50,7 @@ public class TaskServiceImpl implements TaskService {
     private final TaskStatusService taskStatusService;
     private final RescheduleService rescheduleService;
     private final TaskStatusTypeMapper typeMapper;
+    private final TaskStatusMapper taskStatusMapper;
 
     private final Logger logger = LoggerFactory.getLogger(TaskServiceImpl.class);
 
@@ -62,50 +60,67 @@ public class TaskServiceImpl implements TaskService {
     @Transactional
     @Override
     public TaskDTO createTask(TaskDTO taskDTO) {
+
         Task task = mapper.toEntity(taskDTO);
+
         setDetails(task);
+
         repository.saveAndFlush(task);
+
         return mapper.toDTO(task);
     }
 
     private void setDetails(Task task) {
+        // Task Code
         String taskCode = ("Task_" + UUID.randomUUID()).replace("-", "_");
         task.setTaskCode(taskCode);
+
+        // Create time
         task.setCreateTime(LocalDateTime.now());
 
+        // Owner
         task.setOwner(employmentRepository.findByUnit_UnitCodeAndEmployee_Account_AccountCode(task.getUnit().getUnitCode(), task.getOwner().getEmployee().getAccount().getAccountCode()));
+
+        // Responsible
         task.setResponsible(employmentRepository.findByUnit_UnitCodeAndEmployee_Account_AccountCode(task.getUnit().getUnitCode(), task.getResponsible().getEmployee().getAccount().getAccountCode()));
+
+        // Unit
         task.setUnit(unitRepository.findByUnitCode(task.getUnit().getUnitCode()));
 
-        task.setTaskStatus(createStatus(taskCode, CREATED_STATUS));
+        // Task Status
+        TaskStatusDTO statusDTO = new TaskStatusDTO();
+        statusDTO.setTime(LocalDateTime.now());
+        statusDTO.setTaskCode(taskCode);
+        statusDTO.setTaskStatusType(typeMapper.toDTO(statusTypeRepository.findByType(task.getTaskStatus().getTaskStatusType().getType())));
+        taskStatusService.createTaskStatus(statusDTO);
+        task.setTaskStatus(statusRepository.findByTaskCode(taskCode));
 
+        // Task Status History
         List<TaskStatus> taskStatusList = task.getTaskStatusHistory();
-        if (taskStatusList == null) taskStatusList = new ArrayList<>();
-        taskStatusList.add(task.getTaskStatus());
-        task.setTaskStatusHistory(taskStatusList);
+        if (taskStatusList != null && !taskStatusList.isEmpty()){
+            taskStatusList.add(task.getTaskStatus());
+            task.setTaskStatusHistory(taskStatusList);
+        }
+        else {
+            taskStatusList = new ArrayList<>();
+            taskStatusList.add(task.getTaskStatus());
+            task.setTaskStatusHistory(taskStatusList);
+        }
 
+        // Task Path
         if (task.getTaskPath() != null && !task.getTaskPath().isEmpty())
             task.setTaskPath(task.getTaskPath() + "." + taskCode);
         else
             task.setTaskPath(taskCode);
-    }
 
-    private TaskStatus createStatus(String taskCode, String statusTypeName) {
-        TaskStatusType statusType = statusTypeRepository.findByType(statusTypeName);
-        if (statusType == null)
-            throw new EntityNotFound("Task Status Type", "type", statusTypeName);
-
-        TaskStatusDTO statusDTO = new TaskStatusDTO();
-        statusDTO.setTime(LocalDateTime.now());
-        statusDTO.setTaskCode(taskCode);
-        statusDTO.setTaskStatusType(typeMapper.toDTO(statusType));
-        taskStatusService.createTaskStatus(statusDTO);
-        return statusRepository.findByTaskCode(taskCode);
+        // Task Weight is set
     }
 
     @Override
     public PublicTaskDTO getTaskByTaskCode(String taskCode) {
+
         Task task = repository.findByTaskCode(taskCode);
+
         return mapper.transferEntityToPublic(task);
     }
 
@@ -135,22 +150,27 @@ public class TaskServiceImpl implements TaskService {
 
         if (title != null && !title.isEmpty())
             predicates.add(cb.like(cb.lower(root.get("title")), "%" + title.toLowerCase() + "%"));
+
         if (createTime != null)
             predicates.add(cb.equal(root.get("createTime"),createTime));
+
         if (startTime != null)
             predicates.add(cb.equal(root.get("startTime"), startTime));
+
         if (priority != null && !predicates.isEmpty())
             predicates.add(cb.equal(root.get("priority"), priority));
+
         if (taskStatusDTO != null)
             predicates.add(cb.equal(root.get("taskStatus").get("taskStatusType").get("type"), taskStatusDTO.getTaskStatusType().getType()));
 
         if (ownerName != null) {
             Predicate accountName = cb.like(cb.lower(root.get("owner").get("employee").get("account").get("accountName")), "%" + ownerName.toLowerCase() + "%");
-            Predicate accountID = cb.like(cb.lower(root.get("owner").get("employee").get("account").get("accountID")), "%" + ownerName.toLowerCase() + "%");
+            Predicate accountID = cb.like(cb.lower(root.get("owner").get("employee").get("accountID")), "%" + ownerName.toLowerCase() + "%");
             Predicate firstName = cb.like(cb.lower(root.get("owner").get("employee").get("account").get("firstName")), "%" + ownerName.toLowerCase() + "%");
             Predicate lastName = cb.like(cb.lower(root.get("owner").get("employee").get("account").get("lastName")), "%" + ownerName.toLowerCase() + "%");
             predicates.add(cb.or(accountName, accountID, firstName, lastName));
         }
+
         if (responsibleName != null) {
             Predicate accountName = cb.like(cb.lower(root.get("responsible").get("employee").get("account").get("accountName")), "%" + responsibleName.toLowerCase() + "%");
             Predicate accountID = cb.like(cb.lower(root.get("responsible").get("employee").get("account").get("accountID")), "%" + responsibleName.toLowerCase() + "%");
@@ -160,65 +180,46 @@ public class TaskServiceImpl implements TaskService {
         }
 
         cq.where(cb.and(predicates.toArray(new Predicate[0])));
-        return entityManager.createQuery(cq).getResultList().stream()
-                .map(mapper::transferEntityToPublic)
-                .collect(Collectors.toList());
+
+        return entityManager.createQuery(cq).getResultList()
+            .stream()
+            .map(mapper::transferEntityToPublic)
+            .collect(Collectors.toList());
     }
 
     @Override
     public TaskDTO getTaskDetails(String taskCode, EmploymentDTO client) {
-        return mapper.toDTO(repository.findByTaskCode(taskCode));
+        //TODO: do an authentication
+
+        Task task = repository.findByTaskCode(taskCode);
+
+        return mapper.toDTO(task);
     }
 
     @Transactional
     @Override
     public TaskDTO editTask(String taskCode, TaskDTO dto) throws AccessDeniedException {
+
         Task task = repository.findByTaskCode(taskCode);
         if (task == null)
             throw new NullPointerException("There is not such a task!");
 
         String clientID = SecurityContextHolder.getContext().getAuthentication().getName();
+
         authorizationManager.checkAccess(clientID, task.getUnit().getUnitCode(), task.getOwner().getEmployee().getAccount().getAccountID(), ActionType.EDIT_TASK);
+
         updateEntity(task, dto);
+
         repository.save(task);
-        return mapper.toDTO(task);
-    }
-
-    @Transactional
-    @Override
-    public TaskDTO startTask(String taskCode) throws AccessDeniedException {
-        Task task = repository.findByTaskCode(taskCode);
-        if (task == null)
-            throw new EntityNotFound("Task", "Task Code", taskCode);
-
-        String clientID = SecurityContextHolder.getContext().getAuthentication().getName();
-        String ownerCode = task.getOwner() == null || task.getOwner().getEmployee() == null || task.getOwner().getEmployee().getAccount() == null
-                ? null : task.getOwner().getEmployee().getAccount().getAccountCode();
-        String responsibleCode = task.getResponsible() == null || task.getResponsible().getEmployee() == null || task.getResponsible().getEmployee().getAccount() == null
-                ? null : task.getResponsible().getEmployee().getAccount().getAccountCode();
-
-        if (!clientID.equals(ownerCode) && !clientID.equals(responsibleCode))
-            throw new AccessDeniedException("Only the task owner or responsible employee can start the task.");
-
-        String currentStatus = task.getTaskStatus() == null || task.getTaskStatus().getTaskStatusType() == null
-                ? null : task.getTaskStatus().getTaskStatusType().getType();
-
-        if (!ONGOING_STATUS.equalsIgnoreCase(currentStatus)) {
-            task.setTaskStatus(createStatus(taskCode, ONGOING_STATUS));
-            List<TaskStatus> history = task.getTaskStatusHistory() == null ? new ArrayList<>() : task.getTaskStatusHistory();
-            history.add(task.getTaskStatus());
-            task.setTaskStatusHistory(history);
-            task.setUpdateTime(LocalDateTime.now());
-            repository.save(task);
-        }
 
         return mapper.toDTO(task);
     }
 
     private void updateEntity(Task task, TaskDTO dto) {
+
         if (dto.getTitle() != null && !dto.getTitle().isEmpty()) task.setTitle(dto.getTitle());
         if (dto.getDescription() != null && !dto.getDescription().isEmpty()) task.setDescription(dto.getDescription());
-        if (dto.getStartTime() != null || dto.getWorkMinutes() != null || dto.getEndTime() != null || dto.getDeadline() != null){
+        if (dto.getStartTime() != null || dto.getWorkMinutes() != null || dto.getEndTime() != null || dto.getDeadline() != null){ // if one of them is changed so we must reschedule
             rescheduleService.createReschedule(dto);
             if (dto.getStartTime() != null) task.setStartTime(dto.getStartTime());
             if (dto.getEndTime() != null) task.setEndTime(dto.getEndTime());
@@ -226,6 +227,13 @@ public class TaskServiceImpl implements TaskService {
             if (dto.getWorkMinutes() != null) task.setWorkMinutes(dto.getWorkMinutes());
         }
         if (dto.getPriority() != null) task.setPriority(dto.getPriority());
+        if (dto.getTaskStatus() != null){
+            task.setTaskStatus(taskStatusMapper.toEntity(dto.getTaskStatus()));
+            List<TaskStatus> taskStatusList = task.getTaskStatusHistory();
+            taskStatusList.add(task.getTaskStatus());
+            task.setTaskStatusHistory(taskStatusList);
+        }
+        // TODO : Implement task weight changes
         task.setUpdateTime(LocalDateTime.now());
     }
 
@@ -236,7 +244,9 @@ public class TaskServiceImpl implements TaskService {
             throw new EntityNotFound("Task", "Task Code", taskCode);
 
         String clientCode = SecurityContextHolder.getContext().getAuthentication().getName();
+
         authorizationManager.checkAccess(clientCode, task.getUnit().getUnitCode(), task.getOwner().getEmployee().getAccount().getAccountCode(), ActionType.DELETE_TASK);
+
         repository.deleteById(task.getId());
     }
 }
