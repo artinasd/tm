@@ -69,7 +69,7 @@ function CreateTask() {
         if (form.relation === 'related' && !form.relatedTaskCode.trim()) { setError('Enter the previous task code when attaching this task to an existing task.'); return; }
         setSubmitting(true);
         try {
-            const payload = { title: form.title.trim(), description: form.description.trim() || null, unit: { unitCode: form.unitCode }, owner: { employee: { account: { accountCode } } }, responsible: { employee: { account: { accountCode: form.responsibleCode } } }, taskStatus: { taskStatusType: { type: 'created' } }, startTime: toDateTime(form.startTime), endTime: toDateTime(form.endTime), deadline: toDateTime(form.deadline), workMinutes: form.workMinutes ? Number(form.workMinutes) : null, priority: form.priority.trim() || null };
+            const payload = { title: form.title.trim(), description: form.description.trim() || null, unit: { unitCode: form.unitCode }, owner: { employee: { account: { accountCode } } }, responsible: { employee: { account: { accountCode: form.responsibleCode } } }, startTime: toDateTime(form.startTime), endTime: toDateTime(form.endTime), deadline: toDateTime(form.deadline), workMinutes: form.workMinutes ? Number(form.workMinutes) : null, priority: form.priority.trim() || null };
             if (form.relation === 'related') payload.taskPath = form.relatedTaskCode.trim();
             await api.post('/api/tasks/add', payload);
             setSuccess(true); setTimeout(() => navigate('/home/tasks'), 500);
@@ -80,7 +80,7 @@ function CreateTask() {
     return (
         <div className="w-full">
             <h2 className="text-2xl font-bold mb-1">Create New Task</h2>
-            <p className="text2">The owner is automatically you and the initial status is automatically <strong>created</strong>.</p>
+            <p className="text2">New tasks automatically start in <strong>created</strong>. The status changes to <strong>ongoing</strong> only when someone starts working on the task.</p>
             <form onSubmit={createTask} className="rounded-lg bg2 p-5 mt-5 space-y-5">
                 {error && <div role="alert" className="rounded-md border border-red-500/40 bg-red-500/10 p-3 text-red-300">{error}</div>}
                 {success && <div role="status" className="rounded-md border border-green-500/40 bg-green-500/10 p-3 text-green-300">Task created successfully. Opening your tasks...</div>}
