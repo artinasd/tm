@@ -9,6 +9,7 @@ import com.task_service.task_service.mapper.UnitMapper;
 import com.task_service.task_service.repository.EmployeeRepository;
 import com.task_service.task_service.repository.EmploymentRepository;
 import com.task_service.task_service.repository.OrganizationRepository;
+import com.task_service.task_service.repository.RoleRepository;
 import com.task_service.task_service.security.ActionType;
 import com.task_service.task_service.security.AuthorizationManager;
 import com.task_service.task_service.service.AccountService;
@@ -34,7 +35,6 @@ import jakarta.persistence.criteria.Root;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -52,6 +52,8 @@ public class AccountServiceImpl implements AccountService {
     @Autowired
     private EmployeeRepository employeeRepository;
     @Autowired
+    private RoleRepository roleRepository;
+    @Autowired
     private AccountMapper mapper;
     @Autowired
     private OrganizationMapper organizationMapper;
@@ -66,7 +68,6 @@ public class AccountServiceImpl implements AccountService {
     private final Logger logger = LoggerFactory.getLogger(AccountServiceImpl.class);
 
     private final Hash sha256 = new SHA256();
-
 
     @Override
     @Transactional
@@ -121,9 +122,7 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public List<AccountDTO> getAllAccounts() {
-
         List<Account> accountList = accountRepository.findAll();
-
         return new ArrayList<>(accountList.stream().map(mapper::toDTO).toList());
     }
 
@@ -202,6 +201,39 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
+    public List<RoleDTO> getAvailableRoles() {
+        return roleRepository.findAll().stream()
+                .map(role -> {
+                    RoleDTO dto = new RoleDTO();
+                    dto.setName(role.getName());
+                    dto.setPermissions(role.getPermissions());
+                    return dto;
+                })
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public AccountDTO setAccountRole(String accountCode, String roleName) {
+        if (roleName == null || roleName.isBlank()) {
+            throw new IllegalArgumentException("Role name is required.");
+        }
+
+        Account account = accountRepository.findByAccountCode(accountCode);
+        if (account == null) {
+            throw new EntityNotFound("Account", "Account Code", accountCode);
+        }
+
+        Role role = roleRepository.findByName(roleName.trim());
+        if (role == null) {
+            throw new EntityNotFound("Role", "Name", roleName);
+        }
+
+        account.setRole(role);
+        return mapper.toDTO(accountRepository.save(account));
+    }
+
+    @Override
     @Transactional
     public AccountDTO editAccount(String accountCode, AccountDTO accountDTO) throws NoSuchAlgorithmException {
         Account account = accountRepository.findByAccountCode(accountCode);
@@ -220,13 +252,13 @@ public class AccountServiceImpl implements AccountService {
         if (dto.getAccountID() != null) account.setAccountID(dto.getAccountID());
         if (dto.getAccountName() != null && !dto.getAccountName().isEmpty()) account.setAccountName(dto.getAccountName());
         if (dto.getHashedPassword() != null && !dto.getHashedPassword().isEmpty()) {
-            String hashedPassword = sha256.hash(dto.getHashedPassword()); // TODO : it should be done with authentication
+            String hashedPassword = sha256.hash(dto.getHashedPassword());
             account.setHashedPassword(hashedPassword);
         }
         if (dto.getFirstName() != null && !dto.getFirstName().isEmpty()) account.setFirstName(dto.getFirstName());
         if (dto.getLastName() != null && !dto.getLastName().isEmpty()) account.setLastName(dto.getLastName());
         if (dto.getEmail() != null && !dto.getEmail().isEmpty()) account.setEmail(dto.getEmail());
-        if (dto.getPhoneNumber() != null && !dto.getPhoneNumber().isEmpty()) account.setPhoneNumber(dto.getPhoneNumber()); // TODO : it should be done with authentication
+        if (dto.getPhoneNumber() != null && !dto.getPhoneNumber().isEmpty()) account.setPhoneNumber(dto.getPhoneNumber());
         if (dto.getPicture() != null && !dto.getPicture().isEmpty()) account.setPicture(dto.getPicture());
         if (dto.getBio() != null && !dto.getBio().isEmpty()) account.setBio(dto.getBio());
         if (dto.getDateOfBirth() != null) account.setDateOfBirth(dto.getDateOfBirth());
