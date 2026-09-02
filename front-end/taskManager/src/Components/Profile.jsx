@@ -1,20 +1,26 @@
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
 import CameraAltOutlinedIcon from '@mui/icons-material/CameraAltOutlined';
+import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined';
+import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
 import Input from './Costume UI Components/Input.jsx';
 import { useSelector, useDispatch } from 'react-redux';
 import TextArea from './Costume UI Components/TextArea.jsx';
 import { useState } from 'react';
 import { api, ApiError } from '../services/api.js';
 import { loggedUserActions } from '../Redux/LoggedUserSlice.js';
+import { activeRoleActions } from '../Redux/ActiveRoleSlice.js';
+import { useNavigate } from 'react-router-dom';
 
 function Profile() {
     const loggedUser = useSelector(state => state.loggedUser);
+    const activeRole = useSelector(state => state.activeRole);
     const reduxUserInformation = loggedUser.userInfo;
     const [editedFields, setEditedFields] = useState({});
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const dispatch = useDispatch();
+    const navigate = useNavigate();
 
     const updateField = (field, value) => setEditedFields(current => ({ ...current, [field]: value }));
     const resetChanges = () => { setEditedFields({}); setError(''); setSuccess(''); };
@@ -34,6 +40,11 @@ function Profile() {
         } finally { setIsSaving(false); }
     }
 
+    function changeRole() {
+        dispatch(activeRoleActions.clearActiveRole());
+        navigate('/select-role');
+    }
+
     return (
         <div>
             <h2 className="text-2xl font-bold mb-1">Profile</h2>
@@ -50,6 +61,19 @@ function Profile() {
                     <Input onChange={e => updateField('phoneNumber', e.target.value)} value={editedFields.phoneNumber ?? reduxUserInformation.phoneNumber ?? ''} label="Phone Number" type="tel" />
                     <TextArea onChange={e => updateField('bio', e.target.value)} value={editedFields.bio ?? reduxUserInformation.bio ?? ''} extraStyle="md:col-span-2" label="Bio" placeholder="Enter your bio" />
                     <div className="space-x-3 md:col-span-2"><button type="button" onClick={resetChanges} disabled={isSaving} className="rounded-md p-2 bg1 hover:bg-black transition disabled:opacity-50">Cancel</button><button type="button" onClick={handleSave} disabled={isSaving} className="rounded-md p-2 theme transition hover:bg-indigo-600 disabled:opacity-50">{isSaving ? 'Saving…' : 'Save Changes'}</button></div>
+                </div>
+            </div>
+
+            <div className="bg2 p-5 rounded-lg mt-6 border border-indigo-500/20">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-indigo-500/15 text-indigo-300 flex items-center justify-center shrink-0"><BadgeOutlinedIcon /></div>
+                        <div>
+                            <p className="text-xs uppercase tracking-wider text2">Current active role</p>
+                            {activeRole ? <><h3 className="text-xl font-semibold mt-1">{activeRole.roleName}</h3><p className="text2 mt-1 flex items-center gap-1"><BusinessOutlinedIcon style={{ fontSize: '17px' }} /> {activeRole.organizationName}</p></> : <p className="text2 mt-2">No active role selected.</p>}
+                        </div>
+                    </div>
+                    <button type="button" onClick={changeRole} className="px-4 py-2 rounded-lg theme hover:themeHover transition">Change Role</button>
                 </div>
             </div>
         </div>
