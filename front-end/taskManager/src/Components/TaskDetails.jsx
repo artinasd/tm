@@ -29,6 +29,7 @@ function TaskDetails() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [deleting, setDeleting] = useState(false);
+    const [starting, setStarting] = useState(false);
 
     const loadTask = useCallback(async () => {
         setLoading(true);
@@ -57,6 +58,18 @@ function TaskDetails() {
             });
     }, [task]);
 
+    async function startWorking() {
+        setStarting(true);
+        setError('');
+        try {
+            setTask(await api.post(`/api/tasks/start/${encodeURIComponent(taskCode)}`));
+        } catch (err) {
+            setError(err instanceof ApiError ? err.message : 'Unable to start the task.');
+        } finally {
+            setStarting(false);
+        }
+    }
+
     async function deleteTask() {
         if (!window.confirm('Delete this task? This action cannot be undone.')) return;
         setDeleting(true);
@@ -75,6 +88,8 @@ function TaskDetails() {
     if (error && !task) return <div className='rounded-lg bg2 p-8'><p className='text-red-400'>{error}</p><button onClick={loadTask} className='theme rounded-md px-4 py-2 mt-4'>Try again</button></div>;
     if (!task) return null;
 
+    const currentStatus = statusName(task).toLowerCase();
+
     return (
         <div className='w-full space-y-5'>
             <div className='flex flex-col gap-3 md:flex-row md:items-start md:justify-between'>
@@ -83,7 +98,8 @@ function TaskDetails() {
                     <h2 className='text-2xl font-bold'>{task.title || 'Untitled task'}</h2>
                     <p className='text2 mt-1'>{task.taskCode}</p>
                 </div>
-                <div className='flex gap-2'>
+                <div className='flex flex-wrap gap-2'>
+                    {currentStatus === 'created' && <button onClick={startWorking} disabled={starting} className='rounded-md px-4 py-2 theme disabled:opacity-50'>{starting ? 'Starting...' : 'Start Working'}</button>}
                     <button onClick={() => navigate(`/home/tasks/${taskCode}/edit`)} className='rounded-md px-4 py-2 bg1'>Edit</button>
                     <button onClick={deleteTask} disabled={deleting} className='rounded-md px-4 py-2 bg-red-600/80 disabled:opacity-50'>{deleting ? 'Deleting...' : 'Delete'}</button>
                 </div>
