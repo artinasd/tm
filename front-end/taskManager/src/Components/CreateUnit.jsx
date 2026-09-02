@@ -23,6 +23,8 @@ function CreateUnit() {
     const [availableEmployees, setAvailableEmployees] = useState([]);
     const [parentUnits, setParentUnits] = useState([]);
 
+    const isFirstUnit = parentUnits.length === 0;
+
     useEffect(() => {
         let cancelled = false;
         async function loadData() {
@@ -58,7 +60,7 @@ function CreateUnit() {
         setError('');
         const trimmedName = unitName.trim();
         if (!trimmedName) return setError('Unit name is required.');
-        if (!parentUnitCode) return setError('Please select the parent unit.');
+        if (!isFirstUnit && !parentUnitCode) return setError('Please select the parent unit.');
         if (!bossCode) return setError('Unit boss is required. Please select an employee.');
 
         const unitPath = trimmedName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
@@ -67,7 +69,7 @@ function CreateUnit() {
             await api.post('/api/units/add', {
                 unitName: trimmedName,
                 unitPath,
-                parentUnitCode,
+                parentUnitCode: parentUnitCode || null,
                 bossTitle: bossTitle.trim() || null,
                 organization: { orgCode },
                 boss: { account: { accountCode: bossCode } },
@@ -96,12 +98,12 @@ function CreateUnit() {
                     <div><label className="text3 font-medium mb-1 text-sm block">Unit Name *</label><Input type="text" value={unitName} onChange={e => setUnitName(e.target.value)} placeholder="Engineering, Marketing..." /></div>
                     <div><label className="text3 font-medium mb-1 text-sm block">Boss Title</label><Input type="text" value={bossTitle} onChange={e => setBossTitle(e.target.value)} placeholder="Team Lead, Manager..." /></div>
                     <div className="md:col-span-2">
-                        <label className="text3 font-medium mb-1 text-sm block">Parent Unit *</label>
-                        <select value={parentUnitCode} onChange={e => setParentUnitCode(e.target.value)} disabled={!parentUnits.length} className="border border-gray-600 rounded-lg p-2.5 w-full bg-gray-800 text-white disabled:opacity-60">
-                            <option value="">{parentUnits.length ? 'Select the parent unit...' : 'No parent units available'}</option>
+                        <label className="text3 font-medium mb-1 text-sm block">Parent Unit {isFirstUnit ? '' : '*'}</label>
+                        <select value={parentUnitCode} onChange={e => setParentUnitCode(e.target.value)} disabled={isFirstUnit} className="border border-gray-600 rounded-lg p-2.5 w-full bg-gray-800 text-white disabled:opacity-60">
+                            <option value="">{isFirstUnit ? 'Not required for the first unit' : 'Select the parent unit...'}</option>
                             {parentUnits.map(unit => <option key={unit.unitCode} value={unit.unitCode}>{unit.unitName || unit.name || unit.unitCode}</option>)}
                         </select>
-                        <p className="text2 text-xs mt-1 flex items-center gap-1"><AccountTreeOutlinedIcon style={{ fontSize: '15px' }} /> Every new unit must belong to an existing parent unit.</p>
+                        <p className="text2 text-xs mt-1 flex items-center gap-1"><AccountTreeOutlinedIcon style={{ fontSize: '15px' }} /> {isFirstUnit ? 'The first unit in an organization is a root unit and does not require a parent.' : 'Every additional unit must belong to an existing parent unit.'}</p>
                     </div>
                     <div>
                         <label className="text3 font-medium mb-1 text-sm block">Unit Boss *</label>
@@ -120,7 +122,7 @@ function CreateUnit() {
 
                 <div className="flex flex-col sm:flex-row justify-end gap-3 mt-8 border-t border-gray-700 pt-6">
                     <button type="button" onClick={() => navigate(`/home/organizations/${orgCode}`)} disabled={submitting} className="rounded-lg px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white transition disabled:opacity-50">Cancel</button>
-                    <button type="submit" disabled={submitting || !availableEmployees.length || !parentUnits.length} className="rounded-lg px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white transition disabled:opacity-50 disabled:cursor-not-allowed">{submitting ? 'Creating...' : 'Create Unit'}</button>
+                    <button type="submit" disabled={submitting || !availableEmployees.length} className="rounded-lg px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white transition disabled:opacity-50 disabled:cursor-not-allowed">{submitting ? 'Creating...' : 'Create Unit'}</button>
                 </div>
             </form>
         </div>
