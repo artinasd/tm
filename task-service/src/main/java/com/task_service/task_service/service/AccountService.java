@@ -31,4 +31,6 @@ public interface AccountService {
     List<PublicOrganizationDTO> getAccountOrganizations(String name);
 
     List<PublicOrganizationDTO> getOrganizationsByAccountCode(String accountCode);
+
+    AccountDTO setAccountRole(String accountCode, String roleName);
 }
