@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
+import { useDispatch } from 'react-redux';
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined';
 import PlaylistAddCheckRoundedIcon from '@mui/icons-material/PlaylistAddCheckRounded';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
@@ -11,46 +10,24 @@ import { activeRoleActions } from '../Redux/ActiveRoleSlice.js';
 function RoleSelection() {
     const navigate = useNavigate();
     const dispatch = useDispatch();
-    const loggedUser = useSelector(state => state.loggedUser);
-    const accountCode = loggedUser?.userInfo?.accountCode;
     const [roles, setRoles] = useState([]);
     const [selected, setSelected] = useState('');
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
 
     const loadRoles = useCallback(async () => {
-        if (!accountCode) {
-            navigate('/log-in', { replace: true });
-            return;
-        }
-
         setLoading(true);
         setError('');
         setSelected('');
         try {
-            const organizations = await api.get(`/api/accounts/view/${encodeURIComponent(accountCode)}/orgs`);
-            const orgs = Array.isArray(organizations) ? organizations : [];
-            const results = await Promise.all(orgs.map(async org => {
-                try {
-                    const role = await api.get(`/api/orgs/getRole/${encodeURIComponent(org.orgCode)}`);
-                    const roleName = String(role || '').trim();
-                    if (!roleName) return null;
-                    return {
-                        id: `${org.orgCode}:${roleName}`,
-                        orgCode: org.orgCode,
-                        organizationName: org.title || org.orgCode,
-                        roleName,
-                        organization: org,
-                    };
-                } catch {
-                    return null;
-                }
-            }));
-
-            const resolved = results.filter(Boolean);
+            const availableRoles = await api.get('/api/roles');
+            const resolved = (Array.isArray(availableRoles) ? availableRoles : [])
+                .filter(role => role?.name)
+                .map(role => ({ id: role.name, roleName: role.name }));
             setRoles(resolved);
             if (resolved.length === 0) {
-                setError('No organization roles could be loaded for this account. Please try again.');
+                setError('No roles are currently available. Please try again later.');
             }
         } catch (err) {
             setRoles([]);
@@ -58,28 +35,43 @@ function RoleSelection() {
         } finally {
             setLoading(false);
         }
-    }, [accountCode, navigate]);
+    }, []);
 
     useEffect(() => {
         loadRoles();
     }, [loadRoles]);
 
-    function continueWithRole() {
+    async function continueWithRole() {
         const role = roles.find(item => item.id === selected);
-        if (!role) return;
-        dispatch(activeRoleActions.setActiveRole(role));
-        navigate('/home/dashboard', { replace: true });
+        if (!role || saving) return;
+
+        setSaving(true);
+        setError('');
+        try {
+            await api.patch('/api/accounts/role', { name: role.roleName });
+            dispatch(activeRoleActions.setActiveRole({
+                id: role.id,
+                roleName: role.roleName,
+                organizationName: 'Account-wide role',
+                organization: null,
+            }));
+            navigate('/home/dashboard', { replace: true });
+        } catch (err) {
+            setError(err instanceof ApiError ? err.message : 'Unable to save your selected role.');
+        } finally {
+            setSaving(false);
+        }
     }
 
-    if (loading) return <div className="min-h-screen bg1 flex items-center justify-center"><p className="text2">Loading your roles...</p></div>;
+    if (loading) return <div className="min-h-screen bg1 flex items-center justify-center"><p className="text2">Loading available roles...</p></div>;
 
     return (
         <div className="min-h-screen bg1 flex items-center justify-center px-4 py-12">
             <div className="w-full max-w-2xl">
                 <div className="text-center mb-8">
                     <PlaylistAddCheckRoundedIcon style={{ color: '#818cf8', fontSize: '56px' }} />
-                    <h1 className="text-3xl font-bold mt-3">Choose your active role</h1>
-                    <p className="text2 mt-2">Select the role and organization you want to use for this session.</p>
+                    <h1 className="text-3xl font-bold mt-3">Choose your role</h1>
+                    <p className="text2 mt-2">Select the role you want to use for this account. Your role is independent of organization membership.</p>
                 </div>
 
                 {error && (
@@ -99,7 +91,7 @@ function RoleSelection() {
                                     <div className="w-12 h-12 rounded-xl bg-indigo-500/15 text-indigo-300 flex items-center justify-center shrink-0"><BadgeOutlinedIcon aria-hidden="true" /></div>
                                     <div className="min-w-0 flex-1">
                                         <p className="font-semibold text-lg truncate">{role.roleName}</p>
-                                        <p className="text2 text-sm flex items-center gap-1 mt-1"><BusinessOutlinedIcon aria-hidden="true" style={{ fontSize: '16px' }} /> {role.organizationName}</p>
+                                        <p className="text2 text-sm mt-1">Account-wide role</p>
                                     </div>
                                     <span aria-hidden="true" className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selected === role.id ? 'border-indigo-400' : 'border-gray-500'}`}>
                                         {selected === role.id && <span className="w-2.5 h-2.5 rounded-full bg-indigo-400" />}
@@ -112,7 +104,7 @@ function RoleSelection() {
 
                 <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-6">
                     <button type="button" onClick={() => navigate('/log-in', { replace: true })} className="px-4 py-2 rounded-lg bg2 border border-gray-700">Back</button>
-                    <button type="button" onClick={continueWithRole} disabled={!selected} className="px-6 py-2 rounded-lg theme disabled:opacity-50 disabled:cursor-not-allowed">Continue</button>
+                    <button type="button" onClick={continueWithRole} disabled={!selected || saving} className="px-6 py-2 rounded-lg theme disabled:opacity-50 disabled:cursor-not-allowed">{saving ? 'Saving…' : 'Continue'}</button>
                 </div>
             </div>
         </div>
