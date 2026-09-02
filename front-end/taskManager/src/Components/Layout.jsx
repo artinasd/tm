@@ -117,11 +117,11 @@ function Layout() {
                         type="button"
                         onClick={changeRole}
                         className="inline-flex max-w-full items-center gap-2 px-3 py-2 rounded-lg border border-gray-600 hover:border-indigo-400 hover:bg-gray-700/40 transition text-sm"
-                        aria-label={`Change active role, currently ${activeRole.roleName} at ${activeRole.organizationName}`}
+                        aria-label={`Change account role, currently ${activeRole.roleName}`}
                     >
                         <SwapHorizOutlinedIcon aria-hidden="true" style={{ fontSize: '18px' }} />
                         <span className="shrink-0">Change Role</span>
-                        <span className="text2 truncate hidden sm:inline">· {activeRole.roleName} — {activeRole.organizationName}</span>
+                        <span className="text2 truncate hidden sm:inline">· {activeRole.roleName} — Account-wide</span>
                     </button>
                 </div>
                 <div className="py-8 sm:py-10 px-4 sm:px-6 lg:px-10"><Outlet /></div>
