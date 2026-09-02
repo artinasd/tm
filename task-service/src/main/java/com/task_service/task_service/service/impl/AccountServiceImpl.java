@@ -9,6 +9,7 @@ import com.task_service.task_service.mapper.UnitMapper;
 import com.task_service.task_service.repository.EmployeeRepository;
 import com.task_service.task_service.repository.EmploymentRepository;
 import com.task_service.task_service.repository.OrganizationRepository;
+import com.task_service.task_service.repository.RoleRepository;
 import com.task_service.task_service.security.ActionType;
 import com.task_service.task_service.security.AuthorizationManager;
 import com.task_service.task_service.service.AccountService;
@@ -34,7 +35,6 @@ import jakarta.persistence.criteria.Root;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -52,6 +52,8 @@ public class AccountServiceImpl implements AccountService {
     @Autowired
     private EmployeeRepository employeeRepository;
     @Autowired
+    private RoleRepository roleRepository;
+    @Autowired
     private AccountMapper mapper;
     @Autowired
     private OrganizationMapper organizationMapper;
@@ -67,63 +69,45 @@ public class AccountServiceImpl implements AccountService {
 
     private final Hash sha256 = new SHA256();
 
-
     @Override
     @Transactional
     public AccountDTO createAccount(AccountDTO accountDTO) throws NoSuchAlgorithmException {
         Account account = mapper.toEntity(accountDTO);
-
         setDetails(account, accountDTO);
-
         accountRepository.save(account);
-
-        logger.info("{}" , account);
-
+        logger.info("{}", account);
         return mapper.toDTO(account);
     }
 
     private void setDetails(Account account, AccountDTO accountDTO) throws NoSuchAlgorithmException {
         String hashedPassword = sha256.hash(accountDTO.getHashedPassword());
         account.setHashedPassword(hashedPassword);
-
         account.setCreateTime(LocalDateTime.now());
-
         account.setAccountCode(("Account_" + UUID.randomUUID()).replace("_", "-"));
-
         account.setIsActive(true);
-
         account.setIsDeleted(false);
-
         account.setIsPrivate(false);
-
         account.setLastSeen(LocalDateTime.now());
     }
 
     @Override
     public AccountDTO getAccount(String accountCode) {
         Account account = accountRepository.findByAccountCode(accountCode);
-
-        if (account != null) {
-            return mapper.toDTO(account);
-        }
+        if (account != null) return mapper.toDTO(account);
         return null;
     }
 
     @Override
     public PublicAccountDTO viewAccount(String accountCode) {
         Account account = accountRepository.findByAccountCode(accountCode);
-
         if (account == null)
             throw new EntityNotFound("Account", "Account Code", accountCode);
-
         return mapper.transferEntityToPublicDTO(account);
     }
 
     @Override
     public List<AccountDTO> getAllAccounts() {
-
         List<Account> accountList = accountRepository.findAll();
-
         return new ArrayList<>(accountList.stream().map(mapper::toDTO).toList());
     }
 
@@ -156,15 +140,12 @@ public class AccountServiceImpl implements AccountService {
     @Override
     public List<PublicUnitDTO> getAccountUnits(String accountID) {
         Account account = accountRepository.findByAccountID(accountID);
-        if (account == null){
+        if (account == null)
             throw new EntityNotFound("Account", "ID", accountID);
-        }
         List<Employment> employments = employmentRepository.findByEmployee_Account(account);
         List<Unit> unitList = new ArrayList<>();
-
         for (Employment employment : employments)
             unitList.add(employment.getUnit());
-
         return unitList.stream()
                 .map(unitMapper::transferEntityToPublic)
                 .collect(Collectors.toList());
@@ -174,10 +155,8 @@ public class AccountServiceImpl implements AccountService {
     public List<PublicOrganizationDTO> getAccountOrganizations(String accountID) {
         List<Employee> employees = employeeRepository.findByAccount_AccountID(accountID);
         List<Organization> organizationList = new ArrayList<>();
-
         for (Employee employee : employees)
             organizationList.add(employee.getOrganization());
-
         return organizationList.stream()
                 .map(organizationMapper::transferEntityToPublic)
                 .collect(Collectors.toList());
@@ -186,16 +165,12 @@ public class AccountServiceImpl implements AccountService {
     @Override
     public List<PublicOrganizationDTO> getOrganizationsByAccountCode(String accountCode) {
         Account account = accountRepository.findByAccountCode(accountCode);
-
         if (account == null)
             throw new EntityNotFound("Account", "Account Code", accountCode);
-
         List<Employee> employeeList = employeeRepository.findByAccount_AccountCode(accountCode);
         List<Organization> organizations = new ArrayList<>();
-
         for (Employee employee : employeeList)
             organizations.add(employee.getOrganization());
-
         return organizations.stream()
                 .map(organizationMapper::transferEntityToPublic)
                 .collect(Collectors.toList());
@@ -203,30 +178,44 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional
+    public AccountDTO setAccountRole(String accountCode, String roleName) {
+        if (roleName == null || roleName.trim().isEmpty())
+            throw new IllegalArgumentException("A role must be selected.");
+
+        Account account = accountRepository.findByAccountCode(accountCode);
+        if (account == null)
+            throw new EntityNotFound("Account", "Account Code", accountCode);
+
+        Role role = roleRepository.findByName(roleName.trim());
+        if (role == null)
+            throw new EntityNotFound("Role", "Name", roleName.trim());
+
+        account.setRole(role);
+        return mapper.toDTO(accountRepository.save(account));
+    }
+
+    @Override
+    @Transactional
     public AccountDTO editAccount(String accountCode, AccountDTO accountDTO) throws NoSuchAlgorithmException {
         Account account = accountRepository.findByAccountCode(accountCode);
-        if (account == null) {
-            throw  new EntityNotFound("Account", "ID", accountCode);
-        }
+        if (account == null)
+            throw new EntityNotFound("Account", "ID", accountCode);
         updateEntityFromDTO(account, accountDTO);
-
         Account updatedAccount = accountRepository.save(account);
-
         return mapper.toDTO(updatedAccount);
     }
 
     private void updateEntityFromDTO(Account account, AccountDTO dto) throws NoSuchAlgorithmException {
-
         if (dto.getAccountID() != null) account.setAccountID(dto.getAccountID());
         if (dto.getAccountName() != null && !dto.getAccountName().isEmpty()) account.setAccountName(dto.getAccountName());
         if (dto.getHashedPassword() != null && !dto.getHashedPassword().isEmpty()) {
-            String hashedPassword = sha256.hash(dto.getHashedPassword()); // TODO : it should be done with authentication
+            String hashedPassword = sha256.hash(dto.getHashedPassword());
             account.setHashedPassword(hashedPassword);
         }
         if (dto.getFirstName() != null && !dto.getFirstName().isEmpty()) account.setFirstName(dto.getFirstName());
         if (dto.getLastName() != null && !dto.getLastName().isEmpty()) account.setLastName(dto.getLastName());
         if (dto.getEmail() != null && !dto.getEmail().isEmpty()) account.setEmail(dto.getEmail());
-        if (dto.getPhoneNumber() != null && !dto.getPhoneNumber().isEmpty()) account.setPhoneNumber(dto.getPhoneNumber()); // TODO : it should be done with authentication
+        if (dto.getPhoneNumber() != null && !dto.getPhoneNumber().isEmpty()) account.setPhoneNumber(dto.getPhoneNumber());
         if (dto.getPicture() != null && !dto.getPicture().isEmpty()) account.setPicture(dto.getPicture());
         if (dto.getBio() != null && !dto.getBio().isEmpty()) account.setBio(dto.getBio());
         if (dto.getDateOfBirth() != null) account.setDateOfBirth(dto.getDateOfBirth());
@@ -236,16 +225,11 @@ public class AccountServiceImpl implements AccountService {
     @Transactional
     public Boolean deleteAccount(String accountCode) throws AccessDeniedException {
         Account account = accountRepository.findByAccountID(accountCode);
-
         UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-
         authorizationManager.checkAccess(userDetails.getUsername(), null, accountCode, ActionType.DELETE_ACCOUNT);
-
-        if (account == null) {
+        if (account == null)
             throw new EntityNotFound("Account", "ID", accountCode);
-        }
         accountRepository.delete(account);
         return true;
     }
-
 }
