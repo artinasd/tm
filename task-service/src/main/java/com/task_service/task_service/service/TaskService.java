@@ -25,5 +25,7 @@ public interface TaskService {
 
     TaskDTO editTask(String taskCode, TaskDTO dto) throws AccessDeniedException;
 
+    TaskDTO startTask(String taskCode) throws AccessDeniedException;
+
     void deleteTask(String taskCode) throws AccessDeniedException;
 }
