@@ -25,7 +25,7 @@ function CreateTask() {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
 
-    const update = (field, value) => setForm(current => ({ ...current, [field]: value }));
+    const update = useCallback((field, value) => setForm(current => ({ ...current, [field]: value })), []);
 
     const loadOrganizations = useCallback(async () => {
         if (!accountCode) { setOrganizations([]); setOrganizationsLoading(false); return; }
@@ -54,7 +54,7 @@ function CreateTask() {
     useEffect(() => { loadOrganizations(); }, [loadOrganizations]);
     useEffect(() => { if (form.organizationCode) loadUnits(form.organizationCode); else setUnits([]); }, [form.organizationCode, loadUnits]);
     useEffect(() => { if (form.unitCode) loadUnitEmployees(form.unitCode); else setUnitEmployees([]); }, [form.unitCode, loadUnitEmployees]);
-    useEffect(() => { if (activeRole?.orgCode && !form.organizationCode) update('organizationCode', activeRole.orgCode); }, [activeRole?.orgCode, form.organizationCode]);
+    useEffect(() => { if (activeRole?.orgCode && !form.organizationCode) update('organizationCode', activeRole.orgCode); }, [activeRole?.orgCode, form.organizationCode, update]);
 
     const employeeOptions = useMemo(() => {
         const seen = new Set();
@@ -69,15 +69,7 @@ function CreateTask() {
         if (form.relation === 'related' && !form.relatedTaskCode.trim()) { setError('Enter the previous task code when attaching this task to an existing task.'); return; }
         setSubmitting(true);
         try {
-            const payload = {
-                title: form.title.trim(), description: form.description.trim() || null,
-                unit: { unitCode: form.unitCode },
-                owner: { employee: { account: { accountCode } } },
-                responsible: { employee: { account: { accountCode: form.responsibleCode } } },
-                taskStatus: { taskStatusType: { type: 'created' } },
-                startTime: toDateTime(form.startTime), endTime: toDateTime(form.endTime), deadline: toDateTime(form.deadline),
-                workMinutes: form.workMinutes ? Number(form.workMinutes) : null, priority: form.priority.trim() || null,
-            };
+            const payload = { title: form.title.trim(), description: form.description.trim() || null, unit: { unitCode: form.unitCode }, owner: { employee: { account: { accountCode } } }, responsible: { employee: { account: { accountCode: form.responsibleCode } } }, taskStatus: { taskStatusType: { type: 'created' } }, startTime: toDateTime(form.startTime), endTime: toDateTime(form.endTime), deadline: toDateTime(form.deadline), workMinutes: form.workMinutes ? Number(form.workMinutes) : null, priority: form.priority.trim() || null };
             if (form.relation === 'related') payload.taskPath = form.relatedTaskCode.trim();
             await api.post('/api/tasks/add', payload);
             setSuccess(true); setTimeout(() => navigate('/home/tasks'), 500);
