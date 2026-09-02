@@ -9,6 +9,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 public class RoleServiceImpl implements RoleService {
 
@@ -16,6 +18,12 @@ public class RoleServiceImpl implements RoleService {
     private RoleRepository repository;
     @Autowired
     private RoleMapper mapper;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RoleDTO> getAllRoles() {
+        return repository.findAll().stream().map(mapper::toDTO).toList();
+    }
 
     @Override
     @Transactional
@@ -29,11 +37,8 @@ public class RoleServiceImpl implements RoleService {
     @Transactional
     public RoleDTO editRole(RoleDTO roleDTO) {
         Role role = repository.findByName(roleDTO.getName());
-
         updateEntity(role, roleDTO);
-
         repository.save(role);
-
         return mapper.toDTO(role);
     }
 
@@ -47,7 +52,6 @@ public class RoleServiceImpl implements RoleService {
         Role role = repository.findByName(roleDTO.getName());
         if (role == null)
             throw new NullPointerException("There is not such a Role!");
-
         repository.delete(role);
         return true;
     }
