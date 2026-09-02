@@ -1,12 +1,13 @@
-import {createBrowserRouter, RouterProvider} from "react-router-dom";
-import {Navigate} from "react-router";
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { Navigate } from 'react-router';
 
-import SignUpForm from "./Components/SignUpForm.jsx";
-import LogInForm from "./Components/LogInForm.jsx";
-import Layout from "./Components/Layout.jsx";
-import Dashboard from "./Components/Dashboard.jsx";
-import Profile from "./Components/Profile.jsx";
-import CreateTask from "./Components/CreateTask.jsx";
+import SignUpForm from './Components/SignUpForm.jsx';
+import LogInForm from './Components/LogInForm.jsx';
+import RoleSelection from './Components/RoleSelection.jsx';
+import Layout from './Components/Layout.jsx';
+import Dashboard from './Components/Dashboard.jsx';
+import Profile from './Components/Profile.jsx';
+import CreateTask from './Components/CreateTask.jsx';
 import TaskList from './Components/TaskList.jsx';
 import TaskDetails from './Components/TaskDetails.jsx';
 import EditTask from './Components/EditTask.jsx';
@@ -23,33 +24,34 @@ import UnitAddMembers from './Components/UnitAddMembers.jsx';
 
 function App() {
     const router = createBrowserRouter([
-        {path: '/', element: <Navigate to={'/home/dashboard'} />},
+        { path: '/', element: <Navigate to="/home/dashboard" replace /> },
+        { path: '/select-role', element: <RoleSelection /> },
         {
             path: '/home',
             element: <Layout />,
             children: [
-                {path: '/home/dashboard', element: <Dashboard />},
-                {path: '/home/profile', element: <Profile />},
-                {path: '/home/accounts/:accountCode', element: <AccountDetails />},
-                {path: '/home/new-task', element: <CreateTask />},
-                {path: '/home/tasks', element: <TaskList />},
-                {path: '/home/tasks/:taskCode/edit', element: <EditTask />},
-                {path: '/home/tasks/:taskCode', element: <TaskDetails />},
-                {path: '/home/organizations', element: <OrganizationList />},
-                {path: '/home/organizations/create', element: <CreateOrganization />},
-                {path: '/home/organizations/:orgCode', element: <OrganizationDetails />},
-                {path: '/home/organizations/:orgCode/units/create', element: <CreateUnit />},
-                {path: '/home/organizations/:orgCode/units/:unitCode/edit', element: <EditUnit />},
-                {path: '/home/organizations/:orgCode/units/:unitCode', element: <UnitDetails />},
-                {path: '/home/organizations/:orgCode/units/:unitCode/add-members', element: <UnitAddMembers />},
-                {path: '/home/organizations/:orgCode/units/:unitCode/employees/:accountCode', element: <EmployeeDetails />},
-                {path: '/home/organizations/:orgCode/units/:unitCode/employees', element: <EmployeeManagement />},
-                {path: '/home/organizations/:orgCode/employees/:accountCode', element: <EmployeeDetails />},
-                {path: '/home/organizations/:orgCode/employees/manage', element: <EmployeeManagement />},
-            ]
+                { path: '/home/dashboard', element: <Dashboard /> },
+                { path: '/home/profile', element: <Profile /> },
+                { path: '/home/accounts/:accountCode', element: <AccountDetails /> },
+                { path: '/home/new-task', element: <CreateTask /> },
+                { path: '/home/tasks', element: <TaskList /> },
+                { path: '/home/tasks/:taskCode/edit', element: <EditTask /> },
+                { path: '/home/tasks/:taskCode', element: <TaskDetails /> },
+                { path: '/home/organizations', element: <OrganizationList /> },
+                { path: '/home/organizations/create', element: <CreateOrganization /> },
+                { path: '/home/organizations/:orgCode', element: <OrganizationDetails /> },
+                { path: '/home/organizations/:orgCode/units/create', element: <CreateUnit /> },
+                { path: '/home/organizations/:orgCode/units/:unitCode/edit', element: <EditUnit /> },
+                { path: '/home/organizations/:orgCode/units/:unitCode', element: <UnitDetails /> },
+                { path: '/home/organizations/:orgCode/units/:unitCode/add-members', element: <UnitAddMembers /> },
+                { path: '/home/organizations/:orgCode/units/:unitCode/employees/:accountCode', element: <EmployeeDetails /> },
+                { path: '/home/organizations/:orgCode/units/:unitCode/employees', element: <EmployeeManagement /> },
+                { path: '/home/organizations/:orgCode/employees/:accountCode', element: <EmployeeDetails /> },
+                { path: '/home/organizations/:orgCode/employees/manage', element: <EmployeeManagement /> },
+            ],
         },
-        {path: '/sign-up', element: <SignUpForm />},
-        {path: '/log-in', element: <LogInForm />},
+        { path: '/sign-up', element: <SignUpForm /> },
+        { path: '/log-in', element: <LogInForm /> },
     ]);
 
     return <RouterProvider router={router} />;
