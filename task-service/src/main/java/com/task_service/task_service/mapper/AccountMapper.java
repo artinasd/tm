@@ -17,7 +17,7 @@ public class AccountMapper {
         if (account.getLastName() != null) dto.setLastName(account.getLastName());
         if (account.getHashedPassword() != null) dto.setHashedPassword(account.getHashedPassword());
         if (account.getBio() != null && !account.getBio().isEmpty()) dto.setBio(account.getBio());
-        if (account.getEmail() != null && !account.getEmail().isEmpty())dto.setEmail(account.getEmail());
+        if (account.getEmail() != null && !account.getEmail().isEmpty()) dto.setEmail(account.getEmail());
         if (account.getPhoneNumber() != null) dto.setPhoneNumber(account.getPhoneNumber());
         if (account.getPicture() != null && !account.getPicture().isEmpty()) dto.setPicture(account.getPicture());
         if (account.getCreateTime() != null) dto.setCreatedTime(account.getCreateTime());
@@ -26,6 +26,7 @@ public class AccountMapper {
         dto.setIsActive(account.getIsActive());
         dto.setIsPrivate(account.getIsPrivate());
         dto.setIsDeleted(account.getIsDeleted());
+        if (account.getRole() != null) dto.setRoleName(account.getRole().getName());
 
         return dto;
     }
@@ -35,7 +36,7 @@ public class AccountMapper {
 
         if (dto.getAccountCode() != null && !dto.getAccountCode().isEmpty()) account.setAccountCode(dto.getAccountCode());
         if (dto.getAccountID() != null) account.setAccountID(dto.getAccountID());
-        if (dto.getAccountName() != null && !dto.getAccountName().isEmpty())account.setAccountName(dto.getAccountName());
+        if (dto.getAccountName() != null && !dto.getAccountName().isEmpty()) account.setAccountName(dto.getAccountName());
         if (dto.getHashedPassword() != null && !dto.getHashedPassword().isEmpty()) account.setHashedPassword(dto.getHashedPassword());
         if (dto.getFirstName() != null) account.setFirstName(dto.getFirstName());
         if (dto.getLastName() != null) account.setLastName(dto.getLastName());
@@ -62,7 +63,7 @@ public class AccountMapper {
         if (dto.getBio() != null && !dto.getBio().isEmpty()) publicAccountDTO.setBio(dto.getBio());
         if (dto.getEmail() != null && !dto.getEmail().isEmpty()) publicAccountDTO.setEmail(dto.getEmail());
         if (dto.getPicture() != null && !dto.getPicture().isEmpty()) publicAccountDTO.setPicture(dto.getPicture());
-        if (dto.getDateOfBirth() != null) publicAccountDTO.setDateOfBirth(dto.getDateOfBirth()) ;
+        if (dto.getDateOfBirth() != null) publicAccountDTO.setDateOfBirth(dto.getDateOfBirth());
         if (dto.getPhoneNumber() != null && !dto.getPhoneNumber().isEmpty()) publicAccountDTO.setPhoneNumber(dto.getPhoneNumber());
         publicAccountDTO.setIsPrivate(dto.getIsPrivate());
         if (!dto.getIsPrivate()) {
@@ -73,6 +74,7 @@ public class AccountMapper {
 
         return publicAccountDTO;
     }
+
     public PublicAccountDTO transferEntityToPublicDTO(Account account){
         PublicAccountDTO publicAccountDTO = new PublicAccountDTO();
 
@@ -82,7 +84,7 @@ public class AccountMapper {
         if (account.getBio() != null && !account.getBio().isEmpty()) publicAccountDTO.setBio(account.getBio());
         if (account.getEmail() != null && !account.getEmail().isEmpty()) publicAccountDTO.setEmail(account.getEmail());
         if (account.getPicture() != null && !account.getPicture().isEmpty()) publicAccountDTO.setPicture(account.getPicture());
-        if (account.getDateOfBirth() != null) publicAccountDTO.setDateOfBirth(account.getDateOfBirth()) ;
+        if (account.getDateOfBirth() != null) publicAccountDTO.setDateOfBirth(account.getDateOfBirth());
         if (account.getPhoneNumber() != null && !account.getPhoneNumber().isEmpty()) publicAccountDTO.setPhoneNumber(account.getPhoneNumber());
         publicAccountDTO.setIsPrivate(account.getIsPrivate());
         if (!account.getIsPrivate()) {
