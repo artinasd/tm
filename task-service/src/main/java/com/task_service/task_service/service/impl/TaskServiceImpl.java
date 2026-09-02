@@ -6,6 +6,7 @@ import com.task_service.task_service.dto.TaskDTO;
 import com.task_service.task_service.dto.TaskStatusDTO;
 import com.task_service.task_service.entity.Task;
 import com.task_service.task_service.entity.TaskStatus;
+import com.task_service.task_service.entity.TaskStatusType;
 import com.task_service.task_service.exception.EntityNotFound;
 import com.task_service.task_service.mapper.*;
 import com.task_service.task_service.repository.*;
@@ -39,6 +40,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class TaskServiceImpl implements TaskService {
 
+    private static final String CREATED_STATUS = "created";
+    private static final String ONGOING_STATUS = "ongoing";
+
     private final TaskRepository repository;
     private final TaskMapper mapper;
     private final AuthorizationManager authorizationManager;
@@ -71,49 +75,39 @@ public class TaskServiceImpl implements TaskService {
     }
 
     private void setDetails(Task task) {
-        // Task Code
         String taskCode = ("Task_" + UUID.randomUUID()).replace("-", "_");
         task.setTaskCode(taskCode);
-
-        // Create time
         task.setCreateTime(LocalDateTime.now());
 
-        // Owner
         task.setOwner(employmentRepository.findByUnit_UnitCodeAndEmployee_Account_AccountCode(task.getUnit().getUnitCode(), task.getOwner().getEmployee().getAccount().getAccountCode()));
-
-        // Responsible
         task.setResponsible(employmentRepository.findByUnit_UnitCodeAndEmployee_Account_AccountCode(task.getUnit().getUnitCode(), task.getResponsible().getEmployee().getAccount().getAccountCode()));
-
-        // Unit
         task.setUnit(unitRepository.findByUnitCode(task.getUnit().getUnitCode()));
 
-        // Task Status
-        TaskStatusDTO statusDTO = new TaskStatusDTO();
-        statusDTO.setTime(LocalDateTime.now());
-        statusDTO.setTaskCode(taskCode);
-        statusDTO.setTaskStatusType(typeMapper.toDTO(statusTypeRepository.findByType(task.getTaskStatus().getTaskStatusType().getType())));
-        taskStatusService.createTaskStatus(statusDTO);
-        task.setTaskStatus(statusRepository.findByTaskCode(taskCode));
+        // Status is always created when a task is first created. The client cannot choose it.
+        task.setTaskStatus(createStatus(taskCode, CREATED_STATUS));
 
-        // Task Status History
         List<TaskStatus> taskStatusList = task.getTaskStatusHistory();
-        if (taskStatusList != null && !taskStatusList.isEmpty()){
-            taskStatusList.add(task.getTaskStatus());
-            task.setTaskStatusHistory(taskStatusList);
-        }
-        else {
-            taskStatusList = new ArrayList<>();
-            taskStatusList.add(task.getTaskStatus());
-            task.setTaskStatusHistory(taskStatusList);
-        }
+        if (taskStatusList == null) taskStatusList = new ArrayList<>();
+        taskStatusList.add(task.getTaskStatus());
+        task.setTaskStatusHistory(taskStatusList);
 
-        // Task Path
         if (task.getTaskPath() != null && !task.getTaskPath().isEmpty())
             task.setTaskPath(task.getTaskPath() + "." + taskCode);
         else
             task.setTaskPath(taskCode);
+    }
 
-        // Task Weight is set
+    private TaskStatus createStatus(String taskCode, String statusTypeName) {
+        TaskStatusType statusType = statusTypeRepository.findByType(statusTypeName);
+        if (statusType == null)
+            throw new EntityNotFound("Task Status Type", "type", statusTypeName);
+
+        TaskStatusDTO statusDTO = new TaskStatusDTO();
+        statusDTO.setTime(LocalDateTime.now());
+        statusDTO.setTaskCode(taskCode);
+        statusDTO.setTaskStatusType(typeMapper.toDTO(statusType));
+        taskStatusService.createTaskStatus(statusDTO);
+        return statusRepository.findByTaskCode(taskCode);
     }
 
     @Override
@@ -189,11 +183,7 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     public TaskDTO getTaskDetails(String taskCode, EmploymentDTO client) {
-        //TODO: do an authentication
-
-        Task task = repository.findByTaskCode(taskCode);
-
-        return mapper.toDTO(task);
+        return mapper.toDTO(repository.findByTaskCode(taskCode));
     }
 
     @Transactional
@@ -215,11 +205,37 @@ public class TaskServiceImpl implements TaskService {
         return mapper.toDTO(task);
     }
 
+    @Transactional
+    @Override
+    public TaskDTO startTask(String taskCode) throws AccessDeniedException {
+        Task task = repository.findByTaskCode(taskCode);
+        if (task == null)
+            throw new EntityNotFound("Task", "Task Code", taskCode);
+
+        String clientID = SecurityContextHolder.getContext().getAuthentication().getName();
+        authorizationManager.checkAccess(clientID, task.getUnit().getUnitCode(), task.getOwner().getEmployee().getAccount().getAccountID(), ActionType.EDIT_TASK);
+
+        String currentStatus = task.getTaskStatus() == null || task.getTaskStatus().getTaskStatusType() == null
+                ? null
+                : task.getTaskStatus().getTaskStatusType().getType();
+
+        if (!ONGOING_STATUS.equalsIgnoreCase(currentStatus)) {
+            task.setTaskStatus(createStatus(taskCode, ONGOING_STATUS));
+            List<TaskStatus> history = task.getTaskStatusHistory() == null ? new ArrayList<>() : task.getTaskStatusHistory();
+            history.add(task.getTaskStatus());
+            task.setTaskStatusHistory(history);
+            task.setUpdateTime(LocalDateTime.now());
+            repository.save(task);
+        }
+
+        return mapper.toDTO(task);
+    }
+
     private void updateEntity(Task task, TaskDTO dto) {
 
         if (dto.getTitle() != null && !dto.getTitle().isEmpty()) task.setTitle(dto.getTitle());
         if (dto.getDescription() != null && !dto.getDescription().isEmpty()) task.setDescription(dto.getDescription());
-        if (dto.getStartTime() != null || dto.getWorkMinutes() != null || dto.getEndTime() != null || dto.getDeadline() != null){ // if one of them is changed so we must reschedule
+        if (dto.getStartTime() != null || dto.getWorkMinutes() != null || dto.getEndTime() != null || dto.getDeadline() != null){
             rescheduleService.createReschedule(dto);
             if (dto.getStartTime() != null) task.setStartTime(dto.getStartTime());
             if (dto.getEndTime() != null) task.setEndTime(dto.getEndTime());
@@ -227,13 +243,7 @@ public class TaskServiceImpl implements TaskService {
             if (dto.getWorkMinutes() != null) task.setWorkMinutes(dto.getWorkMinutes());
         }
         if (dto.getPriority() != null) task.setPriority(dto.getPriority());
-        if (dto.getTaskStatus() != null){
-            task.setTaskStatus(taskStatusMapper.toEntity(dto.getTaskStatus()));
-            List<TaskStatus> taskStatusList = task.getTaskStatusHistory();
-            taskStatusList.add(task.getTaskStatus());
-            task.setTaskStatusHistory(taskStatusList);
-        }
-        // TODO : Implement task weight changes
+        // Status is intentionally not accepted from task edits. It is controlled by lifecycle actions.
         task.setUpdateTime(LocalDateTime.now());
     }
 
