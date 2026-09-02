@@ -10,7 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.AccessDeniedException;
-import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -22,7 +21,7 @@ public class TaskController {
     TaskService taskService;
 
     @PostMapping("add")
-    public ResponseEntity<TaskDTO> createTask(@RequestBody TaskDTO taskDTO) throws NoSuchAlgorithmException {
+    public ResponseEntity<TaskDTO> createTask(@RequestBody TaskDTO taskDTO) {
         return new ResponseEntity<>(taskService.createTask(taskDTO), HttpStatus.CREATED);
     }
 
@@ -47,7 +46,12 @@ public class TaskController {
     @PatchMapping("edit/{taskCode}")
     public ResponseEntity<TaskDTO> editTask(@PathVariable String taskCode,
                                             @RequestBody TaskDTO dto) throws AccessDeniedException {
-        return new ResponseEntity<>(taskService.editTask(taskCode, dto), HttpStatus.OK); // TODO : there is no need to unitCode
+        return new ResponseEntity<>(taskService.editTask(taskCode, dto), HttpStatus.OK);
+    }
+
+    @PostMapping("start/{taskCode}")
+    public ResponseEntity<TaskDTO> startTask(@PathVariable String taskCode) throws AccessDeniedException {
+        return new ResponseEntity<>(taskService.startTask(taskCode), HttpStatus.OK);
     }
 
     @DeleteMapping("delete/{taskCode}")
