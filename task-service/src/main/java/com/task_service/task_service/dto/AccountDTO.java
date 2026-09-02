@@ -2,7 +2,6 @@ package com.task_service.task_service.dto;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -27,4 +26,5 @@ public class AccountDTO {
     private LocalDateTime lastSeen;
     private Boolean isPrivate;
     private Boolean isDeleted;
+    private String roleName;
 }
