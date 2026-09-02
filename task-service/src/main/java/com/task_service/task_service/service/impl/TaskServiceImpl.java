@@ -25,7 +25,6 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -54,7 +53,6 @@ public class TaskServiceImpl implements TaskService {
     private final TaskStatusService taskStatusService;
     private final RescheduleService rescheduleService;
     private final TaskStatusTypeMapper typeMapper;
-    private final TaskStatusMapper taskStatusMapper;
 
     private final Logger logger = LoggerFactory.getLogger(TaskServiceImpl.class);
 
@@ -64,13 +62,9 @@ public class TaskServiceImpl implements TaskService {
     @Transactional
     @Override
     public TaskDTO createTask(TaskDTO taskDTO) {
-
         Task task = mapper.toEntity(taskDTO);
-
         setDetails(task);
-
         repository.saveAndFlush(task);
-
         return mapper.toDTO(task);
     }
 
@@ -83,7 +77,6 @@ public class TaskServiceImpl implements TaskService {
         task.setResponsible(employmentRepository.findByUnit_UnitCodeAndEmployee_Account_AccountCode(task.getUnit().getUnitCode(), task.getResponsible().getEmployee().getAccount().getAccountCode()));
         task.setUnit(unitRepository.findByUnitCode(task.getUnit().getUnitCode()));
 
-        // Status is always created when a task is first created. The client cannot choose it.
         task.setTaskStatus(createStatus(taskCode, CREATED_STATUS));
 
         List<TaskStatus> taskStatusList = task.getTaskStatusHistory();
@@ -112,9 +105,7 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     public PublicTaskDTO getTaskByTaskCode(String taskCode) {
-
         Task task = repository.findByTaskCode(taskCode);
-
         return mapper.transferEntityToPublic(task);
     }
 
@@ -144,16 +135,12 @@ public class TaskServiceImpl implements TaskService {
 
         if (title != null && !title.isEmpty())
             predicates.add(cb.like(cb.lower(root.get("title")), "%" + title.toLowerCase() + "%"));
-
         if (createTime != null)
             predicates.add(cb.equal(root.get("createTime"),createTime));
-
         if (startTime != null)
             predicates.add(cb.equal(root.get("startTime"), startTime));
-
         if (priority != null && !predicates.isEmpty())
             predicates.add(cb.equal(root.get("priority"), priority));
-
         if (taskStatusDTO != null)
             predicates.add(cb.equal(root.get("taskStatus").get("taskStatusType").get("type"), taskStatusDTO.getTaskStatusType().getType()));
 
@@ -164,7 +151,6 @@ public class TaskServiceImpl implements TaskService {
             Predicate lastName = cb.like(cb.lower(root.get("owner").get("employee").get("account").get("lastName")), "%" + ownerName.toLowerCase() + "%");
             predicates.add(cb.or(accountName, accountID, firstName, lastName));
         }
-
         if (responsibleName != null) {
             Predicate accountName = cb.like(cb.lower(root.get("responsible").get("employee").get("account").get("accountName")), "%" + responsibleName.toLowerCase() + "%");
             Predicate accountID = cb.like(cb.lower(root.get("responsible").get("employee").get("account").get("accountID")), "%" + responsibleName.toLowerCase() + "%");
@@ -174,11 +160,9 @@ public class TaskServiceImpl implements TaskService {
         }
 
         cq.where(cb.and(predicates.toArray(new Predicate[0])));
-
-        return entityManager.createQuery(cq).getResultList()
-            .stream()
-            .map(mapper::transferEntityToPublic)
-            .collect(Collectors.toList());
+        return entityManager.createQuery(cq).getResultList().stream()
+                .map(mapper::transferEntityToPublic)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -189,19 +173,14 @@ public class TaskServiceImpl implements TaskService {
     @Transactional
     @Override
     public TaskDTO editTask(String taskCode, TaskDTO dto) throws AccessDeniedException {
-
         Task task = repository.findByTaskCode(taskCode);
         if (task == null)
             throw new NullPointerException("There is not such a task!");
 
         String clientID = SecurityContextHolder.getContext().getAuthentication().getName();
-
         authorizationManager.checkAccess(clientID, task.getUnit().getUnitCode(), task.getOwner().getEmployee().getAccount().getAccountID(), ActionType.EDIT_TASK);
-
         updateEntity(task, dto);
-
         repository.save(task);
-
         return mapper.toDTO(task);
     }
 
@@ -213,11 +192,16 @@ public class TaskServiceImpl implements TaskService {
             throw new EntityNotFound("Task", "Task Code", taskCode);
 
         String clientID = SecurityContextHolder.getContext().getAuthentication().getName();
-        authorizationManager.checkAccess(clientID, task.getUnit().getUnitCode(), task.getOwner().getEmployee().getAccount().getAccountID(), ActionType.EDIT_TASK);
+        String ownerCode = task.getOwner() == null || task.getOwner().getEmployee() == null || task.getOwner().getEmployee().getAccount() == null
+                ? null : task.getOwner().getEmployee().getAccount().getAccountCode();
+        String responsibleCode = task.getResponsible() == null || task.getResponsible().getEmployee() == null || task.getResponsible().getEmployee().getAccount() == null
+                ? null : task.getResponsible().getEmployee().getAccount().getAccountCode();
+
+        if (!clientID.equals(ownerCode) && !clientID.equals(responsibleCode))
+            throw new AccessDeniedException("Only the task owner or responsible employee can start the task.");
 
         String currentStatus = task.getTaskStatus() == null || task.getTaskStatus().getTaskStatusType() == null
-                ? null
-                : task.getTaskStatus().getTaskStatusType().getType();
+                ? null : task.getTaskStatus().getTaskStatusType().getType();
 
         if (!ONGOING_STATUS.equalsIgnoreCase(currentStatus)) {
             task.setTaskStatus(createStatus(taskCode, ONGOING_STATUS));
@@ -232,7 +216,6 @@ public class TaskServiceImpl implements TaskService {
     }
 
     private void updateEntity(Task task, TaskDTO dto) {
-
         if (dto.getTitle() != null && !dto.getTitle().isEmpty()) task.setTitle(dto.getTitle());
         if (dto.getDescription() != null && !dto.getDescription().isEmpty()) task.setDescription(dto.getDescription());
         if (dto.getStartTime() != null || dto.getWorkMinutes() != null || dto.getEndTime() != null || dto.getDeadline() != null){
@@ -243,7 +226,6 @@ public class TaskServiceImpl implements TaskService {
             if (dto.getWorkMinutes() != null) task.setWorkMinutes(dto.getWorkMinutes());
         }
         if (dto.getPriority() != null) task.setPriority(dto.getPriority());
-        // Status is intentionally not accepted from task edits. It is controlled by lifecycle actions.
         task.setUpdateTime(LocalDateTime.now());
     }
 
@@ -254,9 +236,7 @@ public class TaskServiceImpl implements TaskService {
             throw new EntityNotFound("Task", "Task Code", taskCode);
 
         String clientCode = SecurityContextHolder.getContext().getAuthentication().getName();
-
         authorizationManager.checkAccess(clientCode, task.getUnit().getUnitCode(), task.getOwner().getEmployee().getAccount().getAccountCode(), ActionType.DELETE_TASK);
-
         repository.deleteById(task.getId());
     }
 }
