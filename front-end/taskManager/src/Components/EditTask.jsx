@@ -41,7 +41,6 @@ function EditTask() {
                 deadline: toDateTime(form.deadline),
                 workMinutes: form.workMinutes === '' ? null : Number(form.workMinutes),
                 priority: form.priority.trim() || null,
-                taskStatus: form.status.trim() ? {taskStatusType: {type: form.status.trim()}, taskCode} : null,
             });
             navigate(`/home/tasks/${taskCode}`);
         } catch (err) {
@@ -58,6 +57,7 @@ function EditTask() {
             <button onClick={() => navigate(`/home/tasks/${taskCode}`)} className='text2 hover:text-white mb-3'>← Back to task</button>
             <h2 className='text-2xl font-bold'>Edit Task</h2>
             <p className='text2 mt-1'>{taskCode}</p>
+            <p className='text2 mt-1'>Status is automatic: new tasks are <strong>created</strong> until someone starts working on them.</p>
             <form onSubmit={save} className='rounded-lg bg2 p-5 mt-5 space-y-5'>
                 {error && <div role='alert' className='rounded-md border border-red-500/40 bg-red-500/10 p-3 text-red-300'>{error}</div>}
                 <div className='grid grid-cols-1 md:grid-cols-2 gap-5'>
@@ -67,7 +67,6 @@ function EditTask() {
                         <label className='text3 font-medium mb-1 text-sm' htmlFor='edit-description'>Description</label>
                         <textarea id='edit-description' rows='5' value={form.description} onChange={e => update('description', e.target.value)} className='resize-y border border-gray-500 rounded-md p-2 w-full bg-transparent focus:outline-none focus:border-blue-700' />
                     </div>
-                    <Field label='Status Type' value={form.status} onChange={v => update('status', v)} />
                     <Field label='Work Minutes' type='number' min='0' value={form.workMinutes} onChange={v => update('workMinutes', v)} />
                     <Field label='Start Time' type='datetime-local' value={form.startTime} onChange={v => update('startTime', v)} />
                     <Field label='End Time' type='datetime-local' value={form.endTime} onChange={v => update('endTime', v)} />
