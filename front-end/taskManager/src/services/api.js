@@ -34,6 +34,12 @@ async function parseResponse(response) {
     return text || null;
 }
 
+function isAuthEndpoint(path) {
+    return path === '/api/auth/login'
+        || path === '/api/auth/register'
+        || path === '/api/auth/refresh';
+}
+
 async function refreshAccessToken(user) {
     if (!user?.refreshToken) return null;
 
@@ -58,24 +64,26 @@ async function refreshAccessToken(user) {
 export async function apiFetch(path, options = {}, retryOnUnauthorized = true) {
     const user = getStoredUser();
     const headers = new Headers(options.headers || {});
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
 
     if (options.body !== undefined && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
         headers.set('Content-Type', 'application/json');
     }
 
-    if (user?.accessToken && !headers.has('Authorization')) {
+    // Never send a stale access token to login, registration, or token refresh endpoints.
+    if (!isAuthEndpoint(normalizedPath) && user?.accessToken && !headers.has('Authorization')) {
         headers.set('Authorization', `Bearer ${user.accessToken}`);
     }
 
-    const response = await fetch(`${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`, {
+    const response = await fetch(`${API_BASE_URL}${normalizedPath}`, {
         ...options,
         headers,
     });
 
-    if (response.status === 401 && retryOnUnauthorized && user?.refreshToken && path !== '/api/auth/refresh') {
+    if (response.status === 401 && retryOnUnauthorized && !isAuthEndpoint(normalizedPath) && user?.refreshToken) {
         const refreshedUser = await refreshAccessToken(user);
         if (refreshedUser) {
-            return apiFetch(path, options, false);
+            return apiFetch(normalizedPath, options, false);
         }
     }
 
