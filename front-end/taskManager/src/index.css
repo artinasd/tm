@@ -1,8 +1,37 @@
 @import "tailwindcss";
 
 @layer base {
+    :root {
+        color-scheme: dark;
+    }
+
+    html {
+        min-width: 320px;
+        background: #111827;
+    }
+
     body {
-        @apply text-white;
+        @apply text-white antialiased;
+        margin: 0;
+        min-width: 320px;
+        min-height: 100vh;
+        background: #111827;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+        font: inherit;
+    }
+
+    button:focus-visible,
+    a:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible {
+        outline: 2px solid #818cf8;
+        outline-offset: 2px;
     }
 }
 
@@ -36,11 +65,31 @@
     }
 }
 
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #4b5563 transparent;
+}
+
 ::-webkit-scrollbar {
-    display: none;
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 999px;
 }
 
 button,
 [role="button"] {
     cursor: pointer;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
 }
