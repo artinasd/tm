@@ -1,6 +1,7 @@
 package com.task_service.task_service.service;
 
 import com.task_service.task_service.dto.*;
+import com.task_service.task_service.entity.Link;
 import org.springframework.stereotype.Service;
 
 import java.net.MalformedURLException;
@@ -23,6 +24,8 @@ public interface UnitService {
     boolean removeEmployee(String accountCode, String unitCode) throws AccessDeniedException;
 
     void deleteUnit(String unitCode);
+
+    Link createLink(LinkDTO linkRequest) throws MalformedURLException, NoSuchAlgorithmException;
 
     List<PublicEmploymentDTO> addEmployee(String unitCode, List<PublicEmployeeDTO> employees) throws AccessDeniedException;
 }

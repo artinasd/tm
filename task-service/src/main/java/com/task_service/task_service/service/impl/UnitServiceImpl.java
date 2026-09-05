@@ -2,6 +2,7 @@ package com.task_service.task_service.service.impl;
 
 import com.task_service.task_service.dto.*;
 import com.task_service.task_service.entity.Employment;
+import com.task_service.task_service.entity.Link;
 import com.task_service.task_service.entity.Unit;
 import com.task_service.task_service.exception.EntityNotFound;
 import com.task_service.task_service.mapper.*;
@@ -10,6 +11,8 @@ import com.task_service.task_service.security.ActionType;
 import com.task_service.task_service.security.AuthorizationManager;
 import com.task_service.task_service.service.EmploymentService;
 import com.task_service.task_service.service.UnitService;
+import com.task_service.task_service.utility.LinkGenerator.InviteLinkGenerator;
+import com.task_service.task_service.utility.LinkGenerator.LinkGenerator;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -44,11 +47,17 @@ public class UnitServiceImpl implements UnitService {
     @Autowired
     private EmploymentRepository employmentRepository;
     @Autowired
+    private LinkTypeRepository linkTypeRepository;
+    @Autowired
+    private LinkRepository linkRepository;
+    @Autowired
     private OrganizationRepository orgRepository;
     @Autowired
     private EmploymentService employmentService;
     @Autowired
     private UnitMapper mapper;
+    @Autowired
+    private ChatRoomMapper chatRoomMapper;
     @Autowired
     private AccountMapper accountMapper;
     @Autowired
@@ -60,6 +69,8 @@ public class UnitServiceImpl implements UnitService {
 
     @PersistenceContext
     private EntityManager entityManager;
+
+    private final LinkGenerator linkGenerator = new InviteLinkGenerator();
 
     @Transactional
     @Override
@@ -179,6 +190,35 @@ public class UnitServiceImpl implements UnitService {
     public void deleteUnit(String unitCode) {
         Unit unit = repository.findByUnitCode(unitCode);
         repository.deleteById(unit.getId());
+    }
+
+    // TODO : write this method again
+    @org.springframework.transaction.annotation.Transactional
+    @Override
+    public Link createLink(LinkDTO linkRequest) throws MalformedURLException, NoSuchAlgorithmException {
+        Link link = linkGenerator.createLink(linkRequest);
+
+        // Setting common info
+        link.setCreateAt(LocalDateTime.now());
+        link.setChatRoom(chatRoomMapper.toEntity(linkRequest.getChatRoom()));
+        link.setCreator(accountMapper.toEntity(linkRequest.getCreator()));
+        if (linkRequest.getExpiresAt() != null) link.setExpiresAt(linkRequest.getExpiresAt());
+
+        // Setting every link type's info
+        if (linkRequest.getLinkType().getType().equals("Public"))
+            link.setLinkType(linkTypeRepository.findByType("Public"));
+
+        else if (linkRequest.getLinkType().getType().equals("Direct")){
+            link.setLinkType(linkTypeRepository.findByType("Direct"));
+            link.setTargetAccount(accountMapper.toEntity(linkRequest.getTargetAccount()));
+            link.setUsage(linkRequest.getUsage());
+        }
+        else
+            link.setLinkType(linkTypeRepository.findByType("Expiring"));
+
+        link.setUsage(linkRequest.getUsage());
+
+        return link;
     }
 
     @org.springframework.transaction.annotation.Transactional

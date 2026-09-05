@@ -24,12 +24,14 @@ public class AccountController {
     @PostMapping("add")
     public ResponseEntity<AccountDTO> createAccount(@RequestBody AccountDTO dto) throws NoSuchAlgorithmException {
         AccountDTO publicUser = service.createAccount(dto);
+
         return new ResponseEntity<>(publicUser, HttpStatus.CREATED);
     }
 
     @GetMapping("profile")
     public ResponseEntity<AccountDTO> getAccount() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
         AccountDTO accountDTO = service.getAccount(authentication.getName());
 
         if (accountDTO == null) {
@@ -38,21 +40,10 @@ public class AccountController {
         return new ResponseEntity<>(accountDTO, HttpStatus.OK);
     }
 
-    @GetMapping("roles")
-    public ResponseEntity<List<RoleDTO>> getAvailableRoles() {
-        return new ResponseEntity<>(service.getAvailableRoles(), HttpStatus.OK);
-    }
-
-    @PatchMapping("role")
-    public ResponseEntity<AccountDTO> setAccountRole(@RequestBody RoleDTO roleDTO) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        AccountDTO updatedAccount = service.setAccountRole(authentication.getName(), roleDTO.getName());
-        return new ResponseEntity<>(updatedAccount, HttpStatus.OK);
-    }
-
     @GetMapping("listAll")
     public ResponseEntity<List<AccountDTO>> getAllAccounts() {
         List<AccountDTO> userDTOList = service.getAllAccounts();
+
         return new ResponseEntity<>(userDTOList, HttpStatus.OK);
     }
 
@@ -92,6 +83,7 @@ public class AccountController {
     @DeleteMapping("delete")
     public ResponseEntity<String> deleteAccount(@PathVariable("accountCode") String accountCode) throws AccessDeniedException {
         String message;
+
         Boolean deleteResult = service.deleteAccount(accountCode);
 
         if (!deleteResult) {
@@ -100,6 +92,7 @@ public class AccountController {
         }
 
         message = MessageFormat.format("Account[{0}] deleted successfully.", accountCode);
+
         return new ResponseEntity<>(message, HttpStatus.OK);
     }
 }

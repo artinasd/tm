@@ -10,11 +10,8 @@ import com.task_service.task_service.security.JwtService;
 import com.task_service.task_service.security.RefreshJwtService;
 import com.task_service.task_service.service.AccountService;
 import com.task_service.task_service.service.AuthService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -38,81 +35,62 @@ public class AuthServiceImpl implements AuthService {
     @Autowired
     private AccountDetailsService accountDetailsService;
 
-    private final Logger logger = LoggerFactory.getLogger(AuthServiceImpl.class);
-
     @Override
     public AuthResponse login(AccountDTO accountDTO) {
-        String accountID = accountDTO.getAccountID();
-        if (accountID == null || accountID.isBlank() || accountDTO.getHashedPassword() == null) {
-            throw new BadCredentialsException("Invalid username or password.");
-        }
+        AuthResponse authResponse = new AuthResponse();
 
-        logger.info("Login requested for account ID: {}", accountID);
+        Account account = accountRepository.findByAccountID(accountDTO.getAccountID());
 
-        Account account = accountRepository.findByAccountID(accountID.trim());
-        if (account == null) {
-            throw new BadCredentialsException("Invalid username or password.");
-        }
+        AccountDetail accountDetail = new AccountDetail(account.getAccountCode(), accountDTO.getHashedPassword());
 
-        AccountDetail accountDetail = new AccountDetail(account.getAccountCode(), account.getHashedPassword());
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 accountDetail,
                 accountDTO.getHashedPassword()
         );
 
-        Authentication authenticated = authenticationManager.authenticate(authentication);
-        return createAuthResponse(authenticated);
+        authenticationManager.authenticate(authentication);
+
+        authResponse.setAccessToken(jwtService.generateToken(authentication));
+        authResponse.setRefreshToken(refreshJwtService.generateRefreshToken(authentication));
+
+        return authResponse;
     }
 
     @Override
     public AuthResponse register(AccountDTO accountDTO) throws NoSuchAlgorithmException {
         String rawPassword = accountDTO.getHashedPassword();
-        if (rawPassword == null || rawPassword.isBlank()) {
-            throw new BadCredentialsException("Password is required.");
-        }
+        accountDTO = accountService.createAccount(accountDTO);
+        AccountDetail accountDetail = new AccountDetail(accountDTO.getAccountCode(), accountDTO.getHashedPassword());
 
-        logger.info("Register requested for account ID: {}", accountDTO.getAccountID());
-
-        AccountDTO createdAccount = accountService.createAccount(accountDTO);
-        Account account = accountRepository.findByAccountCode(createdAccount.getAccountCode());
-        if (account == null) {
-            throw new BadCredentialsException("Account registration could not be completed.");
-        }
-
-        AccountDetail accountDetail = new AccountDetail(account.getAccountCode(), account.getHashedPassword());
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 accountDetail,
                 rawPassword
         );
 
-        Authentication authenticated = authenticationManager.authenticate(authentication);
-        return createAuthResponse(authenticated);
-    }
+        authenticationManager.authenticate(authentication);
 
-    private AuthResponse createAuthResponse(Authentication authentication) {
         AuthResponse authResponse = new AuthResponse();
         authResponse.setAccessToken(jwtService.generateToken(authentication));
         authResponse.setRefreshToken(refreshJwtService.generateRefreshToken(authentication));
+
         return authResponse;
     }
 
     @Override
     public AuthResponse refresh(String refreshToken) {
-        if (refreshToken == null || refreshToken.isBlank()
-                || !refreshJwtService.isTokenValid(refreshToken)
-                || refreshJwtService.isTokenExpired(refreshToken)) {
-            throw new BadCredentialsException("Invalid or expired refresh token.");
+        AuthResponse authResponse = new AuthResponse();
+        if (refreshJwtService.isTokenValid(refreshToken) && !refreshJwtService.isTokenExpired(refreshToken)){
+            String accountID = refreshJwtService.extractAccountID(refreshToken);
+            UserDetails userDetails = accountDetailsService.loadUserByUsername(accountID);
+            Authentication authentication = new UsernamePasswordAuthenticationToken(
+                    userDetails,
+                    null
+            );
+
+            authResponse.setRefreshToken(refreshJwtService.generateRefreshToken(authentication));
+            authResponse.setAccessToken(jwtService.generateToken(authentication));
+            return authResponse;
         }
-
-        String accountCode = refreshJwtService.extractAccountID(refreshToken);
-        UserDetails userDetails = accountDetailsService.loadUserByUsername(accountCode);
-        AccountDetail accountDetail = new AccountDetail(userDetails.getUsername(), userDetails.getPassword());
-        Authentication authentication = new UsernamePasswordAuthenticationToken(
-                accountDetail,
-                null,
-                userDetails.getAuthorities()
-        );
-
-        return createAuthResponse(authentication);
+        throw new RuntimeException(); // TODO: Handle with a appropriate exception
     }
 }

@@ -48,6 +48,9 @@ public class Unit {
     @OneToMany(mappedBy = "unit", fetch = FetchType.EAGER)
     private List<Employment> employees;
 
+    @OneToMany(mappedBy = "unit", fetch = FetchType.EAGER)
+    private List<ChatRoom> rooms; // TODO : DTO and mapper
+
     @Type(LTreeType.class)
     @Column(columnDefinition = "ltree")
     private String unitPath;

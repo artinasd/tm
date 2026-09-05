@@ -24,10 +24,6 @@ public interface AccountService {
 
     AccountDTO editAccount(String accountCode, AccountDTO accountDTO) throws NoSuchAlgorithmException;
 
-    AccountDTO setAccountRole(String accountCode, String roleName);
-
-    List<RoleDTO> getAvailableRoles();
-
     Boolean deleteAccount(String accountCode) throws AccessDeniedException;
 
     List<PublicUnitDTO> getAccountUnits(String accountID);

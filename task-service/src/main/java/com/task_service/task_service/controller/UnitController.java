@@ -1,6 +1,7 @@
 package com.task_service.task_service.controller;
 
 import com.task_service.task_service.dto.*;
+import com.task_service.task_service.entity.Link;
 import com.task_service.task_service.service.UnitService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -51,6 +52,11 @@ public class UnitController {
     public ResponseEntity<UnitDTO> editUnit(@PathVariable String unitCode,
                                             @RequestBody UnitDTO unitDTO){
         return new ResponseEntity<>(service.editUnit(unitCode, unitDTO), HttpStatus.OK);
+    }
+
+    @GetMapping("{unitCode}/createLink")
+    public ResponseEntity<Link> createLink(@RequestBody LinkDTO linkRequest) throws MalformedURLException, NoSuchAlgorithmException {
+        return new ResponseEntity<>(service.createLink(linkRequest), HttpStatus.CREATED);
     }
 
     @PatchMapping("{unitCode}/remove/{accountCode}")

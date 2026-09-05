@@ -21,11 +21,15 @@ public class AuthorizationManager {
     @Autowired
     private EmploymentRepository employmentRepository;
     @Autowired
+    private ChatRoomRepository roomRepository;
+    @Autowired
     private UnitRepository unitRepository;
     @Autowired
     private OrganizationRepository orgRepository;
     @Autowired
     private OrganizationMapper orgMapper;
+    @Autowired
+    private MembershipRepository membershipRepository;
 
     public void checkAccess(String clientAccountCode, @Nullable String placeCode, String ownerAccountCode, ActionType action) throws AccessDeniedException {
         if (placeCode == null) {
@@ -45,6 +49,30 @@ public class AuthorizationManager {
                     throw new AccessDeniedException("access denied!!!");
             }
 
+        } else if (placeCode.startsWith("Room")){
+            ChatRoom room = roomRepository.findByRoomCode(placeCode);
+            Membership membership = membershipRepository.findByAccount_AccountCodeAndChatRoom_RoomCode(clientAccountCode, placeCode);
+            if (membership == null)
+                throw new EntityNotFound("Membership", "Room code & Account Code", (placeCode + "&" + clientAccountCode));
+
+            Set<ActionType> roomForbiddenActions = EnumSet.of(
+                    CREATE_EMPLOYEE, DELETE_EMPLOYEE, EDIT_EMPLOYEE, VIEW_EMPLOYEE,
+                    CREATE_EMPLOYMENT, DELETE_EMPLOYMENT, EDIT_EMPLOYMENT, VIEW_EMPLOYMENT, PROMOTE_EMPLOYMENT, DEMOTE_EMPLOYMENT, CHANGE_BOSS,
+                    CREATE_ORGANIZATION, DELETE_ORGANIZATION, EDIT_ORGANIZATION, VIEW_ORGANIZATION, GET_ORGANIZATION_DETAILS,
+                    CREATE_UNIT, DELETE_UNIT, EDIT_UNIT, VIEW_UNIT, VIEW_ALL_UNITS,
+                    EDIT_ACCOUNT,
+                    CREATE_TASK, DELETE_TASK, EDIT_TASK, VIEW_TASK,
+                    CREATE_CHATROOM
+                    );
+
+            if (clientAccountCode.equals(ownerAccountCode)){
+                Set<ActionType> ownerForbiddenActions = EnumSet.of(REMOVE_MEMBER, PROMOTE_MEMBER, DEMOTE_MEMBER);
+                if (roomForbiddenActions.contains(action) || ownerForbiddenActions.contains(action))
+                    throw new AccessDeniedException("Access Denied!!!");
+            } else {
+                if (action == ActionType.EDIT_MESSAGE || !membership.getRole().getPermissions().contains(action) || roomForbiddenActions.contains(action))
+                    throw new AccessDeniedException("Access Denied!!!");
+            }
         } else if (placeCode.startsWith("Unit")) {
             Unit unit = unitRepository.findByUnitCode(placeCode);
             Employment employment = employmentRepository.findByUnit_UnitCodeAndEmployee_Account_AccountCode(placeCode,clientAccountCode);

@@ -52,7 +52,9 @@ public class TaskServiceImpl implements TaskService {
     private final TaskStatusTypeMapper typeMapper;
     private final TaskStatusMapper taskStatusMapper;
 
+    private final SimpMessagingTemplate messagingTemplate;
     private final Logger logger = LoggerFactory.getLogger(TaskServiceImpl.class);
+
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -67,7 +69,15 @@ public class TaskServiceImpl implements TaskService {
 
         repository.saveAndFlush(task);
 
+        BroadcastToUser(task);
+
         return mapper.toDTO(task);
+    }
+
+    private void BroadcastToUser(Task finalTask) {
+        messagingTemplate.convertAndSendToUser(finalTask.getResponsible().getEmployee().getAccount().getAccountID(),
+                "/queue/tasks",
+                mapper.toDTO(finalTask));
     }
 
     private void setDetails(Task task) {
@@ -165,7 +175,7 @@ public class TaskServiceImpl implements TaskService {
 
         if (ownerName != null) {
             Predicate accountName = cb.like(cb.lower(root.get("owner").get("employee").get("account").get("accountName")), "%" + ownerName.toLowerCase() + "%");
-            Predicate accountID = cb.like(cb.lower(root.get("owner").get("employee").get("accountID")), "%" + ownerName.toLowerCase() + "%");
+            Predicate accountID = cb.like(cb.lower(root.get("owner").get("employee").get("account").get("accountID")), "%" + ownerName.toLowerCase() + "%");
             Predicate firstName = cb.like(cb.lower(root.get("owner").get("employee").get("account").get("firstName")), "%" + ownerName.toLowerCase() + "%");
             Predicate lastName = cb.like(cb.lower(root.get("owner").get("employee").get("account").get("lastName")), "%" + ownerName.toLowerCase() + "%");
             predicates.add(cb.or(accountName, accountID, firstName, lastName));

@@ -4,7 +4,10 @@ import com.task_service.task_service.dto.AccountDTO;
 import com.task_service.task_service.dto.AuthResponse;
 import com.task_service.task_service.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.security.NoSuchAlgorithmException;
 
@@ -28,10 +31,5 @@ public class AuthController {
     @PostMapping("refresh")
     public AuthResponse refresh(@RequestBody String refreshToken){
         return authService.refresh(refreshToken);
-    }
-
-    @GetMapping("/test")
-    public String testMethod(){
-        return "hello!";
     }
 }
